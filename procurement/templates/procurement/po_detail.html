@@ -1,0 +1,243 @@
+{% extends "procurement/base.html" %}
+{% load procurement_tags %}
+{% block title %}{{ po.po_no }} - Purchase Order - ProcureFlow{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumb & Header -->
+    <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-4 pb-4 border-b border-slate-200/80">
+        <div>
+            <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-2">
+                <a href="{% url 'procurement:dashboard' %}" class="hover:text-blue-600 transition">Dashboard</a>
+                <span>/</span>
+                <a href="{% url 'procurement:request-list' %}" class="hover:text-blue-600 transition">Daftar Request</a>
+                <span>/</span>
+                <a href="{% url 'procurement:request-detail' po.request.pk %}" class="hover:text-blue-600 transition">{{ po.request.request_no }}</a>
+                <span>/</span>
+                <span class="text-slate-600 font-medium">{{ po.po_no }}</span>
+            </nav>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Purchase Order</h1>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border
+                    {% if po.status == 'fulfilled' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                    {% elif po.status == 'partially_received' %}bg-amber-50 text-amber-700 border-amber-200
+                    {% else %}bg-blue-50 text-blue-700 border-blue-200{% endif %}">
+                    <span class="w-2 h-2 rounded-full
+                        {% if po.status == 'fulfilled' %}bg-emerald-500
+                        {% elif po.status == 'partially_received' %}bg-amber-500
+                        {% else %}bg-blue-500{% endif %}"></span>
+                    {{ po.get_status_display }}
+                </span>
+            </div>
+            <p class="text-xs text-slate-400 mt-1 font-mono">{{ po.po_no }} &bull; Dibuat {{ po.created_at|date:"d M Y, H:i" }} WIB</p>
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+            <a href="{% url 'procurement:po-print' po.pk %}"
+               class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+                <i data-lucide="printer" class="w-4 h-4 text-slate-500"></i>
+                <span>Print / PDF</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="p-2 rounded-xl bg-indigo-50"><i data-lucide="file-text" class="w-4 h-4 text-indigo-600"></i></div>
+                <span class="text-xs font-medium text-slate-500">Request Asal</span>
+            </div>
+            <a href="{% url 'procurement:request-detail' po.request.pk %}" class="text-base font-bold text-blue-600 hover:underline">{{ po.request.request_no }}</a>
+            <p class="text-xs text-slate-400 mt-0.5 truncate">{{ po.request.title }}</p>
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="p-2 rounded-xl bg-emerald-50"><i data-lucide="building-2" class="w-4 h-4 text-emerald-600"></i></div>
+                <span class="text-xs font-medium text-slate-500">Supplier</span>
+            </div>
+            <p class="text-base font-bold text-slate-800">{{ po.supplier.name }}</p>
+            {% if po.supplier.contact_name %}<p class="text-xs text-slate-400 mt-0.5">{{ po.supplier.contact_name }}</p>{% endif %}
+        </div>
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-1">
+                <div class="p-2 rounded-xl bg-amber-50"><i data-lucide="receipt" class="w-4 h-4 text-amber-600"></i></div>
+                <span class="text-xs font-medium text-slate-500">Total Nilai PO</span>
+            </div>
+            <p class="text-base font-bold text-slate-800">{{ po.request.estimated_total|rupiah }}</p>
+        </div>
+    </div>
+
+    <!-- Items Table -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="p-2 rounded-xl bg-blue-50"><i data-lucide="package" class="w-4 h-4 text-blue-600"></i></div>
+            <h2 class="text-sm font-bold text-slate-800">Daftar Item</h2>
+        </div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="bg-slate-50 border-b border-slate-100">
+                        <th class="text-left text-xs font-semibold text-slate-500 px-6 py-3">Deskripsi</th>
+                        <th class="text-center text-xs font-semibold text-slate-500 px-4 py-3">Qty Order</th>
+                        <th class="text-center text-xs font-semibold text-slate-500 px-4 py-3">Qty Diterima</th>
+                        <th class="text-center text-xs font-semibold text-slate-500 px-4 py-3">Sisa</th>
+                        <th class="text-right text-xs font-semibold text-slate-500 px-4 py-3">Harga Satuan</th>
+                        <th class="text-right text-xs font-semibold text-slate-500 px-4 py-3">Total</th>
+                        <th class="text-center text-xs font-semibold text-slate-500 px-4 py-3">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for item in po.items.all %}
+                    <tr class="hover:bg-slate-50/50 transition-colors">
+                        <td class="px-6 py-4">
+                            <p class="font-medium text-slate-800">{{ item.source_request_item.description }}</p>
+                            <span class="inline-block mt-1 px-2 py-0.5 rounded-full text-xs font-medium
+                                {% if item.source_request_item.item_type == 'goods' %}bg-blue-50 text-blue-700
+                                {% else %}bg-purple-50 text-purple-700{% endif %}">
+                                {{ item.source_request_item.get_item_type_display }}
+                            </span>
+                        </td>
+                        <td class="px-4 py-4 text-center text-slate-700 font-medium">{{ item.ordered_quantity|qty }} <span class="text-slate-400 text-xs">{{ item.source_request_item.unit }}</span></td>
+                        <td class="px-4 py-4 text-center text-slate-700 font-medium">{{ item.received_quantity|qty }}</td>
+                        <td class="px-4 py-4 text-center">
+                            {% if item.remaining_quantity > 0 %}
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-50 text-amber-700">{{ item.remaining_quantity|qty }}</span>
+                            {% else %}
+                            <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700"><i data-lucide="check" class="w-3 h-3"></i> Lunas</span>
+                            {% endif %}
+                        </td>
+                        <td class="px-4 py-4 text-right text-slate-700">{{ item.unit_price|rupiah }}</td>
+                        <td class="px-4 py-4 text-right font-semibold text-slate-800">{{ item.line_total|rupiah }}</td>
+                        <td class="px-4 py-4 text-center">
+                            {% if item.remaining_quantity > 0 %}
+                            <a href="{% url 'procurement:po-receive' po.pk %}?purchase_order_item={{ item.pk }}"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm shadow-blue-500/25 transition">
+                                <i data-lucide="package-check" class="w-3.5 h-3.5"></i>
+                                Catat
+                            </a>
+                            {% else %}
+                            <span class="text-xs text-slate-400">—</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="7" class="px-6 py-10 text-center text-slate-400 text-sm">Tidak ada item.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Service Milestones -->
+    {% if po.milestones.exists %}
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center gap-3">
+            <div class="p-2 rounded-xl bg-purple-50"><i data-lucide="milestone" class="w-4 h-4 text-purple-600"></i></div>
+            <h2 class="text-sm font-bold text-slate-800">Milestone Jasa</h2>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for milestone in po.milestones.all %}
+            <div class="px-6 py-4 flex items-center justify-between gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full flex items-center justify-center shrink-0
+                        {% if milestone.is_completed %}bg-emerald-100{% else %}bg-slate-100{% endif %}">
+                        {% if milestone.is_completed %}
+                        <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+                        {% else %}
+                        <i data-lucide="clock" class="w-4 h-4 text-slate-400"></i>
+                        {% endif %}
+                    </div>
+                    <div>
+                        <p class="text-sm font-semibold text-slate-800">{{ milestone.name }}</p>
+                        {% if milestone.due_date %}
+                        <p class="text-xs text-slate-400">Due: {{ milestone.due_date|date:"d M Y" }}</p>
+                        {% endif %}
+                        <span class="text-xs {% if milestone.is_completed %}text-emerald-600 font-medium{% else %}text-slate-400{% endif %}">
+                            {% if milestone.is_completed %}Selesai {% if milestone.completed_at %}{{ milestone.completed_at|date:"d M Y" }}{% endif %}{% else %}Belum selesai{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% if not milestone.is_completed %}
+                <form method="post" action="{% url 'procurement:milestone-complete' po.pk milestone.pk %}">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        Tandai Selesai
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Discrepancies -->
+    <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="p-2 rounded-xl bg-rose-50"><i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i></div>
+                <h2 class="text-sm font-bold text-slate-800">Discrepancy</h2>
+                {% if po.discrepancies.all %}
+                <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold bg-rose-100 text-rose-700">{{ po.discrepancies.count }}</span>
+                {% endif %}
+            </div>
+            <a href="{% url 'procurement:discrepancy-create' po.pk %}"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+                <i data-lucide="plus" class="w-4 h-4 text-slate-500"></i>
+                Catat Discrepancy
+            </a>
+        </div>
+        <div class="divide-y divide-slate-100">
+            {% for discrepancy in po.discrepancies.all %}
+            <div class="px-6 py-5">
+                <div class="flex items-start justify-between gap-4 mb-3">
+                    <div>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold
+                            {% if discrepancy.status == 'open' %}bg-rose-50 text-rose-700 border border-rose-200{% else %}bg-emerald-50 text-emerald-700 border border-emerald-200{% endif %}">
+                            <span class="w-1.5 h-1.5 rounded-full {% if discrepancy.status == 'open' %}bg-rose-500{% else %}bg-emerald-500{% endif %}"></span>
+                            {{ discrepancy.get_status_display }}
+                        </span>
+                    </div>
+                </div>
+                <p class="text-sm text-slate-700 mb-2">{{ discrepancy.description }}</p>
+                {% if discrepancy.resolution_notes %}
+                <div class="bg-emerald-50 border border-emerald-100 rounded-xl p-3 mt-3">
+                    <p class="text-xs font-semibold text-emerald-700 mb-1">Penyelesaian:</p>
+                    <p class="text-xs text-emerald-800">{{ discrepancy.resolution_notes }}</p>
+                </div>
+                {% endif %}
+                {% if discrepancy.status == "open" %}
+                <form method="post" action="{% url 'procurement:discrepancy-resolve' po.pk discrepancy.pk %}" class="mt-4" x-data="{ open: false }">
+                    {% csrf_token %}
+                    <button type="button" @click="open = !open"
+                            class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition mb-3">
+                        <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                        <span x-text="open ? 'Tutup' : 'Selesaikan Discrepancy'"></span>
+                    </button>
+                    <div x-show="open" x-transition class="space-y-3">
+                        <textarea name="resolution_notes" required rows="3"
+                                  placeholder="Tulis catatan penyelesaian discrepancy..."
+                                  class="w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition resize-none"></textarea>
+                        <button type="submit"
+                                class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition">
+                            <i data-lucide="save" class="w-4 h-4"></i>
+                            Simpan Penyelesaian
+                        </button>
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+            {% empty %}
+            <div class="px-6 py-10 text-center">
+                <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                    <i data-lucide="check-circle" class="w-5 h-5 text-slate-400"></i>
+                </div>
+                <p class="text-sm text-slate-400">Tidak ada discrepancy untuk PO ini.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}

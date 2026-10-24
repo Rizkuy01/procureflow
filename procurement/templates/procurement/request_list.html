@@ -1,0 +1,335 @@
+{% extends "procurement/base.html" %}
+{% load procurement_tags %}
+{% block title %}Daftar Request - ProcureFlow{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Header Section -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+            <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <a href="{% url 'procurement:dashboard' %}" class="hover:text-blue-600 transition">Dashboard</a>
+                <span>/</span>
+                <span class="text-slate-600 font-medium">Pengadaan</span>
+            </nav>
+            <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">Daftar Request Pengadaan</h1>
+            <p class="text-sm text-slate-500 mt-1">Kelola, pantau proses verifikasi berjenjang, dan riwayat pengajuan barang & jasa.</p>
+        </div>
+        <div class="shrink-0">
+            <a href="{% url 'procurement:request-create' %}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 active:bg-blue-800 shadow-md shadow-blue-500/20 transition">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Buat Request Baru</span>
+            </a>
+        </div>
+    </div>
+
+    <!-- Filter Tabs & Search Bar Card -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 sm:p-5 space-y-4">
+        <!-- Status Tabs -->
+        <div class="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-100">
+            <a href="{% url 'procurement:request-list' %}{% if search_query %}?q={{ search_query }}{% endif %}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition
+               {% if not status_filter %}bg-blue-50 text-blue-700 border border-blue-200{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                <span>Semua Request</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] {% if not status_filter %}bg-blue-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}">{{ all_count }}</span>
+            </a>
+
+            <a href="{% url 'procurement:request-list' %}?status=pending{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition
+               {% if status_filter == 'pending' %}bg-amber-50 text-amber-800 border border-amber-200{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                <span>Menunggu Approval</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] {% if status_filter == 'pending' %}bg-amber-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}">{{ pending_count }}</span>
+            </a>
+
+            <a href="{% url 'procurement:request-list' %}?status=active_po{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition
+               {% if status_filter == 'active_po' %}bg-indigo-50 text-indigo-700 border border-indigo-200{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                <span>PO Aktif</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] {% if status_filter == 'active_po' %}bg-indigo-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}">{{ active_po_count }}</span>
+            </a>
+
+            <a href="{% url 'procurement:request-list' %}?status=draft{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition
+               {% if status_filter == 'draft' %}bg-slate-100 text-slate-800 border border-slate-300{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                <span>Draft</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] {% if status_filter == 'draft' %}bg-slate-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}">{{ draft_count }}</span>
+            </a>
+
+            <a href="{% url 'procurement:request-list' %}?status=fulfilled{% if search_query %}&q={{ search_query }}{% endif %}"
+               class="inline-flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition
+               {% if status_filter == 'fulfilled' %}bg-emerald-50 text-emerald-700 border border-emerald-200{% else %}text-slate-600 hover:bg-slate-50{% endif %}">
+                <span>Selesai</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] {% if status_filter == 'fulfilled' %}bg-emerald-600 text-white{% else %}bg-slate-100 text-slate-600{% endif %}">{{ fulfilled_count }}</span>
+            </a>
+        </div>
+
+        <!-- Search Toolbar -->
+        <form method="get" class="flex flex-col sm:flex-row items-center gap-3">
+            {% if status_filter %}
+                <input type="hidden" name="status" value="{{ status_filter }}">
+            {% endif %}
+            <div class="relative flex-1 w-full">
+                <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3.5 text-slate-400">
+                    <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input type="text" name="q" value="{{ search_query }}"
+                       placeholder="Cari nomor request, judul pengadaan, atau pemohon..."
+                       class="block w-full rounded-xl border border-slate-200 pl-10 pr-3.5 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition">
+            </div>
+
+            <div class="flex items-center gap-2 w-full sm:w-auto shrink-0">
+                <button type="submit"
+                        class="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-semibold text-white bg-slate-800 hover:bg-slate-900 transition flex items-center justify-center gap-1.5">
+                    <span>Cari</span>
+                </button>
+                {% if search_query or status_filter %}
+                <a href="{% url 'procurement:request-list' %}"
+                   class="px-3.5 py-2 rounded-xl text-xs font-medium text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition whitespace-nowrap flex items-center gap-1">
+                    <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                    <span>Reset Filter</span>
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+
+    <!-- Data Table Container (Desktop) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden hidden md:block">
+        <div class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-slate-200/80 text-xs font-bold uppercase tracking-wider text-slate-500">
+                        <th class="py-3.5 px-6">Nomor Request</th>
+                        <th class="py-3.5 px-6">Judul & Keperluan</th>
+                        <th class="py-3.5 px-6">Pemohon</th>
+                        <th class="py-3.5 px-6">Status</th>
+                        <th class="py-3.5 px-6 text-right">Total Estimasi</th>
+                        <th class="py-3.5 px-6">Tenggat</th>
+                        <th class="py-3.5 px-6 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-normal">
+                    {% for item in requests %}
+                    <tr class="hover:bg-slate-50/70 transition">
+                        <td class="py-4 px-6 whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' item.pk %}"
+                               class="font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1.5">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                                <span>{{ item.request_no }}</span>
+                            </a>
+                        </td>
+                        <td class="py-4 px-6 max-w-xs">
+                            <div class="font-semibold text-slate-900 truncate">{{ item.title }}</div>
+                            <div class="text-xs text-slate-500 truncate mt-0.5">{{ item.purpose }}</div>
+                        </td>
+                        <td class="py-4 px-6 whitespace-nowrap">
+                            <div class="flex items-center gap-2">
+                                <div class="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-700">
+                                    {{ item.requester.get_username|slice:":2"|upper }}
+                                </div>
+                                <span class="text-xs font-medium text-slate-700">{{ item.requester.get_username }}</span>
+                            </div>
+                        </td>
+                        <td class="py-4 px-6 whitespace-nowrap">
+                            {% with s=item.status %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border
+                                {% if s == 'draft' %}
+                                    bg-slate-50 text-slate-700 border-slate-200
+                                {% elif s == 'approved' %}
+                                    bg-blue-50 text-blue-700 border-blue-200
+                                {% elif s == 'fulfilled' %}
+                                    bg-emerald-50 text-emerald-700 border-emerald-200
+                                {% elif s == 'rejected' or s == 'cancelled' %}
+                                    bg-rose-50 text-rose-700 border-rose-200
+                                {% elif s == 'returned_for_correction' %}
+                                    bg-orange-50 text-orange-700 border-orange-200
+                                {% else %}
+                                    bg-amber-50 text-amber-800 border-amber-200
+                                {% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full
+                                    {% if s == 'draft' %}bg-slate-400
+                                    {% elif s == 'approved' %}bg-blue-500
+                                    {% elif s == 'fulfilled' %}bg-emerald-500
+                                    {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-500
+                                    {% elif s == 'returned_for_correction' %}bg-orange-500
+                                    {% else %}bg-amber-500{% endif %}"></span>
+                                {{ item.get_status_display }}
+                            </span>
+                            {% endwith %}
+                        </td>
+                        <td class="py-4 px-6 text-right font-semibold text-slate-900 whitespace-nowrap">
+                            {{ item.estimated_total|rupiah }}
+                        </td>
+                        <td class="py-4 px-6 text-xs text-slate-500 whitespace-nowrap">
+                            {{ item.needed_by|date:"d M Y" }}
+                        </td>
+                        <td class="py-4 px-6 text-center whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' item.pk %}"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 transition">
+                                <span>Detail</span>
+                                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="py-12 px-6 text-center">
+                            <div class="max-w-sm mx-auto flex flex-col items-center">
+                                <div class="w-12 h-12 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mb-3">
+                                    <i data-lucide="inbox" class="w-6 h-6"></i>
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-800">Belum ada request.</h3>
+                                <p class="text-xs text-slate-500 mt-1">Tidak ada dokumen pengadaan yang sesuai dengan filter pencarian ini.</p>
+                                <div class="mt-4">
+                                    <a href="{% url 'procurement:request-create' %}" class="inline-flex items-center gap-1.5 text-xs font-semibold text-blue-600 hover:underline">
+                                        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                                        <span>Buat Request Baru</span>
+                                    </a>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Desktop Pagination Controls -->
+        {% if paginator.num_pages > 1 %}
+        <div class="px-6 py-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/60">
+            <div class="text-xs text-slate-500">
+                Menampilkan <span class="font-bold text-slate-800">{{ page_obj.start_index }}</span> - <span class="font-bold text-slate-800">{{ page_obj.end_index }}</span> dari <span class="font-bold text-slate-800">{{ paginator.count }}</span> request
+            </div>
+
+            <div class="flex items-center gap-1.5">
+                <!-- Tombol Sebelumnya -->
+                {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-sm transition">
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    <span>Sebelumnya</span>
+                </a>
+                {% else %}
+                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50 text-xs font-medium text-slate-300 cursor-not-allowed">
+                    <i data-lucide="chevron-left" class="w-3.5 h-3.5"></i>
+                    <span>Sebelumnya</span>
+                </span>
+                {% endif %}
+
+                <!-- Nomor Halaman -->
+                <div class="flex items-center gap-1">
+                    {% for p in paginator.page_range %}
+                        {% if p == page_obj.number %}
+                        <span class="w-8 h-8 rounded-xl bg-blue-600 text-white font-bold text-xs flex items-center justify-center shadow-sm shadow-blue-500/25">
+                            {{ p }}
+                        </span>
+                        {% elif p >= page_obj.number|add:"-2" and p <= page_obj.number|add:"2" %}
+                        <a href="?page={{ p }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                           class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs text-slate-700 flex items-center justify-center transition">
+                            {{ p }}
+                        </a>
+                        {% elif p == 1 or p == paginator.num_pages %}
+                        <a href="?page={{ p }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                           class="w-8 h-8 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-semibold text-xs text-slate-700 flex items-center justify-center transition">
+                            {{ p }}
+                        </a>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+
+                <!-- Tombol Berikutnya -->
+                {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-xs font-semibold text-slate-700 shadow-sm transition">
+                    <span>Berikutnya</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </a>
+                {% else %}
+                <span class="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-slate-100 bg-slate-50 text-xs font-medium text-slate-300 cursor-not-allowed">
+                    <span>Berikutnya</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </span>
+                {% endif %}
+            </div>
+        </div>
+        {% elif paginator.count > 0 %}
+        <div class="px-6 py-3.5 border-t border-slate-100 flex items-center justify-between bg-slate-50/60 text-xs text-slate-500">
+            <span>Menampilkan seluruh <strong>{{ paginator.count }}</strong> request</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Mobile Card View -->
+    <div class="space-y-3 md:hidden">
+        {% for item in requests %}
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-4 space-y-3">
+            <div class="flex items-center justify-between gap-2">
+                <a href="{% url 'procurement:request-detail' item.pk %}" class="text-xs font-bold text-blue-600 flex items-center gap-1">
+                    <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+                    <span>{{ item.request_no }}</span>
+                </a>
+                {% with s=item.status %}
+                <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium border
+                    {% if s == 'draft' %}bg-slate-50 text-slate-700 border-slate-200
+                    {% elif s == 'approved' %}bg-blue-50 text-blue-700 border-blue-200
+                    {% elif s == 'fulfilled' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                    {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-50 text-rose-700 border-rose-200
+                    {% elif s == 'returned_for_correction' %}bg-orange-50 text-orange-700 border-orange-200
+                    {% else %}bg-amber-50 text-amber-800 border-amber-200{% endif %}">
+                    {{ item.get_status_display }}
+                </span>
+                {% endwith %}
+            </div>
+
+            <div>
+                <h4 class="text-sm font-bold text-slate-900">{{ item.title }}</h4>
+                <p class="text-xs text-slate-500 line-clamp-2 mt-0.5">{{ item.purpose }}</p>
+            </div>
+
+            <div class="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                <div>
+                    <span class="text-slate-400 block text-[10px]">Total Estimasi</span>
+                    <strong class="font-semibold text-slate-900">{{ item.estimated_total|rupiah }}</strong>
+                </div>
+                <a href="{% url 'procurement:request-detail' item.pk %}"
+                   class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700">
+                    <span>Buka</span>
+                    <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                </a>
+            </div>
+        </div>
+        {% empty %}
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-8 text-center">
+            <p class="text-sm font-semibold text-slate-700">Belum ada request.</p>
+            <p class="text-xs text-slate-400 mt-1">Belum ada dokumen pengadaan yang ditemukan.</p>
+        </div>
+        {% endfor %}
+
+        <!-- Mobile Pagination Controls -->
+        {% if paginator.num_pages > 1 %}
+        <div class="bg-white rounded-2xl border border-slate-200/80 p-3 flex items-center justify-between text-xs">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="px-3 py-1.5 rounded-xl border border-slate-200 font-semibold text-slate-700 bg-slate-50">
+                &larr; Sebelumnya
+            </a>
+            {% else %}
+            <span class="px-3 py-1.5 text-slate-300">&larr; Sebelumnya</span>
+            {% endif %}
+
+            <span class="text-slate-500 font-medium">Hal {{ page_obj.number }} dari {{ paginator.num_pages }}</span>
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}"
+               class="px-3 py-1.5 rounded-xl border border-slate-200 font-semibold text-slate-700 bg-slate-50">
+                Berikutnya &rarr;
+            </a>
+            {% else %}
+            <span class="px-3 py-1.5 text-slate-300">Berikutnya &rarr;</span>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

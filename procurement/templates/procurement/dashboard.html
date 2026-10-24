@@ -1,0 +1,725 @@
+{% extends "procurement/base.html" %}
+{% load procurement_tags %}
+{% block title %}Dashboard Pengadaan - ProcureFlow{% endblock %}
+
+{% block extra_head %}
+<!-- Chart.js CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="space-y-6" x-data="dashboardApp()">
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!--  1. TOP BAR / PAGE HEADER (Bersih, Rapi, Profesional)                -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div>
+            <div class="flex items-center gap-3">
+                <h1 class="text-2xl font-extrabold text-slate-900 tracking-tight">Dashboard Pengadaan</h1>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                    <span class="w-1.5 h-1.5 rounded-full bg-blue-600 animate-pulse"></span>
+                    <span>Role: {% if request.user.procurement_profile %}{{ request.user.procurement_profile.get_role_display }}{% elif request.user.is_superuser %}Superuser{% else %}Requester{% endif %}</span>
+                </span>
+            </div>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">
+                Monitoring real-time aktivitas pengadaan, tren pengeluaran, dan antrean verifikasi operasional.
+            </p>
+        </div>
+
+        <div class="flex items-center gap-2.5 shrink-0">
+            <a href="{% url 'procurement:request-list' %}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 shadow-sm transition">
+                <i data-lucide="list" class="w-4 h-4 text-slate-500"></i>
+                <span>Semua Request</span>
+            </a>
+            {% if can_create_request %}
+            <a href="{% url 'procurement:request-create' %}"
+               class="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-600/25 transition transform active:scale-95">
+                <i data-lucide="plus" class="w-4 h-4"></i>
+                <span>Buat Request</span>
+            </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!--  FILTER RENTANG WAKTU (Time Range Filter untuk Seluruh Dashboard)     -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-3.5 sm:px-5 sm:py-3"
+         x-data="{ customOpen: '{{ period }}' === 'custom' }">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            <!-- Label & Active Indicator -->
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center shrink-0">
+                    <i data-lucide="calendar" class="w-4 h-4"></i>
+                </div>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-bold text-slate-900">Rentang Waktu:</span>
+                        <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-blue-50 text-blue-700 border border-blue-200">
+                            {{ period_label }}
+                        </span>
+                    </div>
+                    <p class="text-[11px] text-slate-400 mt-0.5">Filter data seluruh card metrik dan visualisasi grafik</p>
+                </div>
+            </div>
+
+            <!-- Preset Buttons -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <a href="?period=all"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if period == 'all' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    Semua
+                </a>
+                <a href="?period=30d"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if period == '30d' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    30 Hari
+                </a>
+                <a href="?period=3m"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if period == '3m' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    3 Bulan
+                </a>
+                <a href="?period=6m"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if period == '6m' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    6 Bulan
+                </a>
+                <a href="?period=this_year"
+                   class="px-3 py-1.5 rounded-xl text-xs font-semibold transition {% if period == 'this_year' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    Tahun Ini
+                </a>
+                <button type="button"
+                        @click="customOpen = !customOpen"
+                        class="px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5 {% if period == 'custom' %}bg-blue-600 text-white shadow-sm shadow-blue-500/25{% else %}bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900{% endif %}">
+                    <i data-lucide="sliders-horizontal" class="w-3.5 h-3.5"></i>
+                    <span>Kustom</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Custom Date Range Form (Tampil saat tombol Kustom diklik) -->
+        <div x-show="customOpen" x-transition class="mt-3 pt-3 border-t border-slate-100">
+            <form method="get" class="flex flex-wrap items-center gap-3 text-xs">
+                <input type="hidden" name="period" value="custom">
+                <div class="flex items-center gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Mulai:</label>
+                    <input type="date" name="start_date" value="{{ start_date }}" required
+                           class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-slate-50 focus:bg-white transition">
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <label class="text-[11px] font-bold text-slate-500 uppercase tracking-wider">Tanggal Selesai:</label>
+                    <input type="date" name="end_date" value="{{ end_date }}" required
+                           class="rounded-xl border border-slate-200 px-3 py-1.5 text-xs text-slate-800 focus:border-blue-500 focus:ring-1 focus:ring-blue-100 bg-slate-50 focus:bg-white transition">
+                </div>
+                <button type="submit"
+                        class="px-4 py-1.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 transition shadow-sm">
+                    Terapkan Filter
+                </button>
+                {% if period == 'custom' %}
+                <a href="?period=all" class="text-xs text-slate-400 hover:text-slate-600 underline ml-1">
+                    Reset
+                </a>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!--  2. KPI SUMMARY METRIC CARDS (Langsung data sistem di paling atas)     -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+
+        <!-- Card 1: Perlu Tindakan -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-amber-500"></div>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Perlu Tindakan</span>
+                <div class="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 border border-amber-200/60 flex items-center justify-center transition group-hover:scale-105">
+                    <i data-lucide="alert-circle" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ action_needed_count }}</span>
+                <span class="text-xs text-slate-500 font-medium">dokumen</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Antrean keputusan Anda</span>
+                {% if action_needed_count > 0 %}
+                <span class="px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">Prioritas</span>
+                {% else %}
+                <span class="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">Bersih</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Card 2: Menunggu Approval -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-blue-500"></div>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Menunggu Approval</span>
+                <div class="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 border border-blue-200/60 flex items-center justify-center transition group-hover:scale-105">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ pending_approval_count }}</span>
+                <span class="text-xs text-slate-500 font-medium">request</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Dalam proses review</span>
+                <span class="px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 font-semibold">In Review</span>
+            </div>
+        </div>
+
+        <!-- Card 3: PO Aktif -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-indigo-500"></div>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">PO Aktif</span>
+                <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-200/60 flex items-center justify-center transition group-hover:scale-105">
+                    <i data-lucide="file-check" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ active_po_count }}</span>
+                <span class="text-xs text-slate-500 font-medium">pesanan</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Open / Penerimaan</span>
+                <span class="px-1.5 py-0.5 rounded bg-indigo-50 text-indigo-700 font-semibold">Aktif</span>
+            </div>
+        </div>
+
+        <!-- Card 4: Selesai -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-emerald-500"></div>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pengadaan Selesai</span>
+                <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200/60 flex items-center justify-center transition group-hover:scale-105">
+                    <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-3 flex items-baseline gap-2">
+                <span class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ completed_count }}</span>
+                <span class="text-xs text-slate-500 font-medium">terpenuhi</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Rampung diterima</span>
+                <span class="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-semibold">Fulfilled</span>
+            </div>
+        </div>
+
+        <!-- Card 5: Total Nilai Pengadaan (Font size disesuaikan agar angka terbaca penuh) -->
+        <div class="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm hover:shadow-md transition relative overflow-hidden group">
+            <div class="absolute top-0 left-0 right-0 h-1 bg-violet-500"></div>
+            <div class="flex items-center justify-between">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-slate-500">Total Nilai Pengadaan</span>
+                <div class="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 border border-violet-200/60 flex items-center justify-center transition group-hover:scale-105">
+                    <i data-lucide="wallet" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <div class="mt-3.5 flex items-baseline">
+                <span class="text-base sm:text-lg xl:text-xl font-extrabold text-slate-900 tracking-tight leading-tight whitespace-nowrap">{{ total_spend|rupiah }}</span>
+            </div>
+            <div class="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                <span>Estimasi nilai aktif</span>
+                <span class="px-1.5 py-0.5 rounded bg-violet-50 text-violet-700 font-semibold">Akumulasi</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!--  3. GRAFIK & ANALITIK DASHBOARD (Tren Bulanan & Distribusi Status)    -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- Chart 1: Tren Pengadaan & Pengeluaran (8 Kolom) -->
+        <div class="lg:col-span-8 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
+                <div>
+                    <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-blue-600"></i>
+                        <span>Tren Pengadaan &amp; Estimasi Nilai</span>
+                    </h2>
+                    <p class="text-xs text-slate-400 mt-0.5">Aktivitas volume permohonan dan nilai pengadaan sesuai periode terpilih</p>
+                </div>
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2 text-xs font-medium text-slate-500">
+                        <span class="inline-block w-3 h-3 rounded bg-blue-600"></span> Nilai (Rp)
+                        <span class="inline-block w-3 h-3 rounded-full bg-amber-500 ml-2"></span> Jml Request
+                    </div>
+                    <span class="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2.5 py-1 rounded-full">
+                        {{ period_label }}
+                    </span>
+                </div>
+            </div>
+
+            <!-- Canvas wrapper -->
+            <div class="relative pt-4 w-full h-[280px]">
+                <canvas id="trendChart"></canvas>
+            </div>
+        </div>
+
+        <!-- Chart 2: Distribusi Status Pengadaan (4 Kolom) -->
+        <div class="lg:col-span-4 bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between">
+            <div class="pb-4 border-b border-slate-100">
+                <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-4 h-4 text-indigo-600"></i>
+                    <span>Distribusi Dokumen</span>
+                </h2>
+                <p class="text-xs text-slate-400 mt-0.5">Proporsi status pengadaan dalam sistem</p>
+            </div>
+
+            <!-- Canvas wrapper -->
+            <div class="relative py-2 w-full h-[200px] flex items-center justify-center">
+                <canvas id="statusChart"></canvas>
+            </div>
+
+            <!-- Custom Legend -->
+            <div class="grid grid-cols-2 gap-2 pt-3 border-t border-slate-100 text-xs">
+                <div class="flex items-center gap-1.5 text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0"></span>
+                    <span class="truncate">Selesai: <strong class="text-slate-900" x-text="chartData.status.fulfilled"></strong></span>
+                </div>
+                <div class="flex items-center gap-1.5 text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-blue-500 shrink-0"></span>
+                    <span class="truncate">Approved/PO: <strong class="text-slate-900" x-text="chartData.status.approved"></strong></span>
+                </div>
+                <div class="flex items-center gap-1.5 text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-amber-500 shrink-0"></span>
+                    <span class="truncate">Review: <strong class="text-slate-900" x-text="chartData.status.pending"></strong></span>
+                </div>
+                <div class="flex items-center gap-1.5 text-slate-600">
+                    <span class="w-2.5 h-2.5 rounded-full bg-slate-400 shrink-0"></span>
+                    <span class="truncate">Draft: <strong class="text-slate-900" x-text="chartData.status.draft"></strong></span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <!--  4. TABEL DATA SISTEM (Profesional dengan Tab & Search)              -->
+    <!-- ═════════════════════════════════════════════════════════════════════ -->
+    <div id="action-queue" class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+
+        <!-- Table Header & Controls -->
+        <div class="p-5 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <!-- Tabs -->
+            <div class="flex items-center gap-2">
+                <button type="button"
+                        @click="activeTab = 'queue'"
+                        class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2"
+                        :class="activeTab === 'queue' ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+                    <i data-lucide="inbox" class="w-4 h-4"></i>
+                    <span>{{ queue_label }}</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold"
+                          :class="activeTab === 'queue' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
+                        {{ queue_requests|length }}
+                    </span>
+                </button>
+
+                <button type="button"
+                        @click="activeTab = 'recent'"
+                        class="px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition flex items-center gap-2"
+                        :class="activeTab === 'recent' ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span>Request Terbaru</span>
+                    <span class="px-1.5 py-0.5 rounded-full text-[10px] font-extrabold"
+                          :class="activeTab === 'recent' ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-700'">
+                        {{ recent_requests|length }}
+                    </span>
+                </button>
+            </div>
+
+            <!-- Search bar -->
+            <div class="relative w-full md:w-72">
+                <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+                <input type="text"
+                       x-model="searchQuery"
+                       placeholder="Cari nomor, judul, pemohon..."
+                       class="w-full pl-9 pr-3.5 py-2 rounded-xl border border-slate-200 text-xs sm:text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-slate-50 focus:bg-white">
+            </div>
+        </div>
+
+        <!-- ── TAB 1: Antrean Tindakan ── -->
+        <div x-show="activeTab === 'queue'" class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        <th class="py-3 px-6">Nomor Request</th>
+                        <th class="py-3 px-6">Judul Pengadaan</th>
+                        <th class="py-3 px-6">Pemohon</th>
+                        <th class="py-3 px-6">Status</th>
+                        <th class="py-3 px-6 text-right">Estimasi Nilai</th>
+                        <th class="py-3 px-6 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-normal">
+                    {% for item in queue_requests %}
+                    <tr class="hover:bg-slate-50/70 transition"
+                        x-show="matchesSearch('{{ item.request_no|escapejs }}', '{{ item.title|escapejs }}', '{{ item.requester.get_username|escapejs }}')">
+                        <td class="py-3.5 px-6 font-semibold text-blue-600 whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' item.pk %}"
+                               class="hover:underline flex items-center gap-1.5 font-mono text-xs">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                                <span>{{ item.request_no }}</span>
+                            </a>
+                        </td>
+                        <td class="py-3.5 px-6 font-medium text-slate-900">
+                            <div class="text-sm font-semibold">{{ item.title }}</div>
+                            <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                                <span><i data-lucide="calendar" class="w-3 h-3 inline mr-0.5 text-slate-400"></i>Dibutuhkan: {{ item.needed_by|date:"d M Y" }}</span>
+                                {% if item.items.count %}
+                                <span>&bull; {{ item.items.count }} item</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-6 text-slate-600 whitespace-nowrap">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-blue-100 text-blue-700 border border-blue-200 flex items-center justify-center text-[11px] font-bold">
+                                    {{ item.requester.get_username|slice:":2"|upper }}
+                                </div>
+                                <span class="text-xs font-medium text-slate-800">{{ item.requester.get_username }}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-6 whitespace-nowrap">
+                            {% with s=item.status %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border
+                                {% if s == 'draft' %}
+                                    bg-slate-50 text-slate-700 border-slate-200
+                                {% elif s == 'approved' %}
+                                    bg-blue-50 text-blue-700 border-blue-200
+                                {% elif s == 'fulfilled' %}
+                                    bg-emerald-50 text-emerald-700 border-emerald-200
+                                {% elif s == 'rejected' or s == 'cancelled' %}
+                                    bg-rose-50 text-rose-700 border-rose-200
+                                {% elif s == 'returned_for_correction' %}
+                                    bg-orange-50 text-orange-700 border-orange-200
+                                {% else %}
+                                    bg-amber-50 text-amber-800 border-amber-200
+                                {% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full
+                                    {% if s == 'draft' %}bg-slate-400
+                                    {% elif s == 'approved' %}bg-blue-500
+                                    {% elif s == 'fulfilled' %}bg-emerald-500
+                                    {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-500
+                                    {% elif s == 'returned_for_correction' %}bg-orange-500
+                                    {% else %}bg-amber-500{% endif %}"></span>
+                                {{ item.get_status_display }}
+                            </span>
+                            {% endwith %}
+                        </td>
+                        <td class="py-3.5 px-6 text-right font-bold text-slate-900 whitespace-nowrap">
+                            {{ item.estimated_total|rupiah }}
+                        </td>
+                        <td class="py-3.5 px-6 text-center whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' item.pk %}"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-blue-600 hover:text-white hover:bg-blue-600 bg-blue-50 border border-blue-200/60 transition shadow-sm">
+                                <span>Tindak Lanjuti</span>
+                                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 px-6 text-center">
+                            <div class="max-w-sm mx-auto flex flex-col items-center">
+                                <div class="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3">
+                                    <i data-lucide="check" class="w-6 h-6"></i>
+                                </div>
+                                <h3 class="text-sm font-bold text-slate-800">Antrean pekerjaan bersih!</h3>
+                                <p class="text-xs text-slate-500 mt-1">Saat ini tidak ada permohonan pengadaan yang memerlukan tindakan langsung dari role Anda.</p>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ── TAB 2: Request Terbaru ── -->
+        <div x-show="activeTab === 'recent'" class="overflow-x-auto">
+            <table class="w-full text-left text-sm">
+                <thead>
+                    <tr class="bg-slate-50/75 border-b border-slate-100 text-[11px] font-bold uppercase tracking-wider text-slate-500">
+                        <th class="py-3 px-6">Nomor Request</th>
+                        <th class="py-3 px-6">Judul Pengadaan</th>
+                        <th class="py-3 px-6">Pemohon</th>
+                        <th class="py-3 px-6">Status</th>
+                        <th class="py-3 px-6 text-right">Estimasi Nilai</th>
+                        <th class="py-3 px-6 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 font-normal">
+                    {% for req in recent_requests %}
+                    <tr class="hover:bg-slate-50/70 transition"
+                        x-show="matchesSearch('{{ req.request_no|escapejs }}', '{{ req.title|escapejs }}', '{{ req.requester.get_username|escapejs }}')">
+                        <td class="py-3.5 px-6 font-semibold text-blue-600 whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' req.pk %}"
+                               class="hover:underline flex items-center gap-1.5 font-mono text-xs">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                                <span>{{ req.request_no }}</span>
+                            </a>
+                        </td>
+                        <td class="py-3.5 px-6 font-medium text-slate-900">
+                            <div class="text-sm font-semibold">{{ req.title }}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">Dibuat: {{ req.created_at|date:"d M Y, H:i" }}</div>
+                        </td>
+                        <td class="py-3.5 px-6 text-slate-600 whitespace-nowrap">
+                            <div class="flex items-center gap-2">
+                                <div class="w-7 h-7 rounded-full bg-slate-100 text-slate-700 border border-slate-200 flex items-center justify-center text-[11px] font-bold">
+                                    {{ req.requester.get_username|slice:":2"|upper }}
+                                </div>
+                                <span class="text-xs font-medium text-slate-800">{{ req.requester.get_username }}</span>
+                            </div>
+                        </td>
+                        <td class="py-3.5 px-6 whitespace-nowrap">
+                            {% with s=req.status %}
+                            <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold border
+                                {% if s == 'draft' %}
+                                    bg-slate-50 text-slate-700 border-slate-200
+                                {% elif s == 'approved' %}
+                                    bg-blue-50 text-blue-700 border-blue-200
+                                {% elif s == 'fulfilled' %}
+                                    bg-emerald-50 text-emerald-700 border-emerald-200
+                                {% elif s == 'rejected' or s == 'cancelled' %}
+                                    bg-rose-50 text-rose-700 border-rose-200
+                                {% elif s == 'returned_for_correction' %}
+                                    bg-orange-50 text-orange-700 border-orange-200
+                                {% else %}
+                                    bg-amber-50 text-amber-800 border-amber-200
+                                {% endif %}">
+                                <span class="w-1.5 h-1.5 rounded-full
+                                    {% if s == 'draft' %}bg-slate-400
+                                    {% elif s == 'approved' %}bg-blue-500
+                                    {% elif s == 'fulfilled' %}bg-emerald-500
+                                    {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-500
+                                    {% elif s == 'returned_for_correction' %}bg-orange-500
+                                    {% else %}bg-amber-500{% endif %}"></span>
+                                {{ req.get_status_display }}
+                            </span>
+                            {% endwith %}
+                        </td>
+                        <td class="py-3.5 px-6 text-right font-bold text-slate-900 whitespace-nowrap">
+                            {{ req.estimated_total|rupiah }}
+                        </td>
+                        <td class="py-3.5 px-6 text-center whitespace-nowrap">
+                            <a href="{% url 'procurement:request-detail' req.pk %}"
+                               class="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:text-blue-600 bg-slate-100 hover:bg-slate-200 transition">
+                                <span>Lihat Detail</span>
+                                <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="py-12 px-6 text-center text-slate-400">
+                            Belum ada riwayat permohonan terkini.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Table Footer -->
+        <div class="px-6 py-4 bg-slate-50/60 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span>Menampilkan data antrean dan request terintegrasi</span>
+            <a href="{% url 'procurement:request-list' %}" class="font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1">
+                <span>Buka Seluruh Arsip Pengadaan</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+            </a>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- JSON Script block for Chart data (formatter-safe) -->
+{{ chart_data|json_script:"dashboard-chart-data" }}
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function dashboardApp() {
+    return {
+        activeTab: 'queue',
+        searchQuery: '',
+        chartData: JSON.parse(document.getElementById('dashboard-chart-data').textContent || '{}'),
+
+        init() {
+            this.$nextTick(() => {
+                if (window.lucide) lucide.createIcons();
+                this.initCharts();
+            });
+        },
+
+        matchesSearch(no, title, requester) {
+            if (!this.searchQuery.trim()) return true;
+            const q = this.searchQuery.toLowerCase();
+            return no.toLowerCase().includes(q) ||
+                   title.toLowerCase().includes(q) ||
+                   requester.toLowerCase().includes(q);
+        },
+
+        initCharts() {
+            const data = this.chartData;
+
+            // ── 1. Combo Trend Chart (Nilai Pengadaan + Volume Request) ──
+            const trendCtx = document.getElementById('trendChart');
+            if (trendCtx) {
+                new Chart(trendCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: data.months,
+                        datasets: [
+                            {
+                                label: 'Total Nilai (Rp)',
+                                data: data.spend,
+                                backgroundColor: 'rgba(37, 99, 235, 0.85)',
+                                hoverBackgroundColor: 'rgba(29, 78, 216, 1)',
+                                borderRadius: 8,
+                                borderSkipped: false,
+                                yAxisID: 'y',
+                                order: 2,
+                            },
+                            {
+                                label: 'Jumlah Request',
+                                data: data.counts,
+                                type: 'line',
+                                borderColor: '#f59e0b',
+                                backgroundColor: '#f59e0b',
+                                borderWidth: 3,
+                                pointBackgroundColor: '#ffffff',
+                                pointBorderColor: '#f59e0b',
+                                pointBorderWidth: 2,
+                                pointRadius: 4,
+                                pointHoverRadius: 6,
+                                tension: 0.35,
+                                yAxisID: 'y1',
+                                order: 1,
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                backgroundColor: '#0f172a',
+                                titleFont: { size: 12, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                padding: 10,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        if (context.dataset.yAxisID === 'y') {
+                                            const val = Math.round(context.raw);
+                                            return ' Nilai: Rp ' + val.toLocaleString('id-ID');
+                                        } else {
+                                            return ' Volume: ' + context.raw + ' request';
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                grid: { display: false },
+                                ticks: { font: { size: 11, weight: '600' }, color: '#64748b' }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                grid: { color: '#f1f5f9' },
+                                ticks: {
+                                    font: { size: 10 },
+                                    color: '#94a3b8',
+                                    callback: function(val) {
+                                        if (val >= 1000000000) return (val / 1000000000).toFixed(1) + ' M';
+                                        if (val >= 1000000) return (val / 1000000).toFixed(0) + ' jt';
+                                        return val;
+                                    }
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                grid: { drawOnChartArea: false },
+                                ticks: {
+                                    stepSize: 1,
+                                    precision: 0,
+                                    font: { size: 10 },
+                                    color: '#f59e0b',
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // ── 2. Status Distribution Doughnut Chart ──
+            const statusCtx = document.getElementById('statusChart');
+            if (statusCtx) {
+                const s = data.status;
+                const totalDocs = s.draft + s.pending + s.approved + s.fulfilled + s.rejected;
+                new Chart(statusCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Selesai', 'Approved / PO', 'Dalam Review', 'Draft', 'Ditolak/Batal'],
+                        datasets: [{
+                            data: [s.fulfilled, s.approved, s.pending, s.draft, s.rejected],
+                            backgroundColor: [
+                                '#10b981', // Emerald
+                                '#3b82f6', // Blue
+                                '#f59e0b', // Amber
+                                '#94a3b8', // Slate
+                                '#f43f5e', // Rose
+                            ],
+                            borderWidth: 2,
+                            borderColor: '#ffffff',
+                            hoverOffset: 4,
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '72%',
+                        plugins: {
+                            legend: {
+                                display: false,
+                            },
+                            tooltip: {
+                                backgroundColor: '#0f172a',
+                                titleFont: { size: 12, weight: 'bold' },
+                                bodyFont: { size: 12 },
+                                padding: 10,
+                                cornerRadius: 8,
+                                callbacks: {
+                                    label: function(context) {
+                                        const count = context.raw;
+                                        const pct = totalDocs > 0 ? Math.round((count / totalDocs) * 100) : 0;
+                                        return ` ${context.label}: ${count} (${pct}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    }
+}
+</script>
+{% endblock %}

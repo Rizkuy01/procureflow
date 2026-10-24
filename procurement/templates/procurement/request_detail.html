@@ -1,0 +1,620 @@
+{% extends "procurement/base.html" %}
+{% load procurement_tags %}
+{% block title %}{{ request_obj.request_no }} - Detail Request - ProcureFlow{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <!-- Breadcrumb & Top Bar -->
+    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-2 border-b border-slate-200/80">
+        <div>
+            <nav class="flex items-center gap-1.5 text-xs text-slate-400 mb-1">
+                <a href="{% url 'procurement:dashboard' %}" class="hover:text-blue-600 transition">Dashboard</a>
+                <span>/</span>
+                <a href="{% url 'procurement:request-list' %}" class="hover:text-blue-600 transition">Daftar Request</a>
+                <span>/</span>
+                <span class="text-slate-600 font-medium">{{ request_obj.request_no }}</span>
+            </nav>
+            <div class="flex flex-wrap items-center gap-3">
+                <h1 class="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">{{ request_obj.title }}</h1>
+                <!-- Status Badge -->
+                {% with s=request_obj.status %}
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border
+                    {% if s == 'draft' %}bg-slate-50 text-slate-700 border-slate-200
+                    {% elif s == 'approved' %}bg-blue-50 text-blue-700 border-blue-200
+                    {% elif s == 'fulfilled' %}bg-emerald-50 text-emerald-700 border-emerald-200
+                    {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-50 text-rose-700 border-rose-200
+                    {% elif s == 'returned_for_correction' %}bg-orange-50 text-orange-700 border-orange-200
+                    {% else %}bg-amber-50 text-amber-800 border-amber-200{% endif %}">
+                    <span class="w-2 h-2 rounded-full
+                        {% if s == 'draft' %}bg-slate-400
+                        {% elif s == 'approved' %}bg-blue-500
+                        {% elif s == 'fulfilled' %}bg-emerald-500
+                        {% elif s == 'rejected' or s == 'cancelled' %}bg-rose-500
+                        {% elif s == 'returned_for_correction' %}bg-orange-500
+                        {% else %}bg-amber-500{% endif %}"></span>
+                    {{ request_obj.get_status_display }}
+                </span>
+                {% endwith %}
+            </div>
+            <p class="text-xs text-slate-400 mt-1">Diajukan pada {{ request_obj.created_at|date:"d M Y, H:i" }} WIB &bull; No: <span class="font-mono text-slate-600">{{ request_obj.request_no }}</span></p>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="flex flex-wrap items-center gap-2">
+            {% if can_edit_request %}
+                <a href="{% url 'procurement:request-edit' request_obj.pk %}"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+                    <i data-lucide="edit-3" class="w-4 h-4 text-slate-500"></i>
+                    <span>Edit Request</span>
+                </a>
+            {% endif %}
+
+            {% if request_obj.status == "draft" or request_obj.status == "returned_for_correction" %}
+                {% if request.user.id == request_obj.requester_id %}
+                <form method="post" action="{% url 'procurement:request-submit' request_obj.pk %}" class="inline">
+                    {% csrf_token %}
+                    <button type="submit"
+                            class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 transition">
+                        <i data-lucide="send" class="w-4 h-4"></i>
+                        <span>Ajukan Request</span>
+                    </button>
+                </form>
+                {% endif %}
+            {% endif %}
+
+            {% if request_obj.status == "pending_supplier_evaluation" %}
+                {% if request.user.procurement_profile.role == "procurement" or request.user.is_superuser %}
+                    <a href="{% url 'procurement:supplier-evaluate' request_obj.pk %}"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 hover:bg-indigo-100 transition">
+                        <i data-lucide="award" class="w-4 h-4"></i>
+                        <span>Evaluasi Supplier</span>
+                    </a>
+                    <a href="{% url 'procurement:supplier-select' request_obj.pk %}"
+                       class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 shadow-sm transition">
+                        <i data-lucide="check-circle" class="w-4 h-4"></i>
+                        <span>Tetapkan Supplier Final</span>
+                    </a>
+                {% endif %}
+            {% endif %}
+
+            {% if request_obj.status == "approved" and request.user.procurement_profile.role == "procurement" or request.user.is_superuser and request_obj.status == "approved" %}
+                {% if not has_purchase_order %}
+                <a href="{% url 'procurement:po-create' request_obj.pk %}"
+                   class="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-semibold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition">
+                    <i data-lucide="file-plus" class="w-4 h-4"></i>
+                    <span>Buat Purchase Order (PO)</span>
+                </a>
+                {% endif %}
+            {% endif %}
+
+            {% if has_purchase_order %}
+                <a href="{% url 'procurement:po-detail' request_obj.purchase_order.pk %}"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-sm transition">
+                    <i data-lucide="file-check" class="w-4 h-4"></i>
+                    <span>Buka PO ({{ request_obj.purchase_order.po_no }})</span>
+                </a>
+            {% endif %}
+
+            {% if not has_purchase_order and request_obj.status != "cancellation_pending" and request_obj.status != "cancelled" and request_obj.status != "fulfilled" and request.user.id == request_obj.requester_id %}
+                <a href="{% url 'procurement:cancellation-create' request_obj.pk %}"
+                   class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-rose-700 bg-rose-50 border border-rose-200 hover:bg-rose-100 transition">
+                    <i data-lucide="ban" class="w-4 h-4"></i>
+                    <span>Ajukan Pembatalan</span>
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Stepper Pipeline Alur Pengadaan (Visual Progress) -->
+    <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 overflow-hidden">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-5">Progres Alur Persetujuan & Pengadaan</h3>
+        
+        <!-- Step Indicator -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <!-- Step 1: Section Head -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'pending_section_head' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status in 'pending_finance pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'pending_section_head' %}
+                        bg-blue-600 text-white animate-pulse
+                    {% elif request_obj.status in 'pending_finance pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    1
+                </div>
+                <div class="text-xs font-bold truncate">Section Head</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'pending_section_head' %}text-blue-600 font-semibold
+                    {% elif request_obj.status in 'pending_finance pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}text-emerald-600 font-medium
+                    {% else %}text-slate-400{% endif %}">
+                    {% if request_obj.status == 'pending_section_head' %}Menunggu
+                    {% elif request_obj.status in 'pending_finance pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}Selesai
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+
+            <!-- Step 2: Finance -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'pending_finance' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status in 'pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'pending_finance' %}
+                        bg-blue-600 text-white animate-pulse
+                    {% elif request_obj.status in 'pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    2
+                </div>
+                <div class="text-xs font-bold truncate">Finance</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'pending_finance' %}text-blue-600 font-semibold
+                    {% elif request_obj.status in 'pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}text-emerald-600 font-medium
+                    {% else %}Antrean{% endif %}">
+                    {% if request_obj.status == 'pending_finance' %}Menunggu
+                    {% elif request_obj.status in 'pending_admin_procurement pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}Selesai
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+
+            <!-- Step 3: Admin Procurement -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'pending_admin_procurement' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status == 'returned_for_correction' %}
+                    bg-orange-50 border-orange-300 text-orange-900
+                {% elif request_obj.status in 'pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'pending_admin_procurement' %}
+                        bg-blue-600 text-white animate-pulse
+                    {% elif request_obj.status == 'returned_for_correction' %}
+                        bg-orange-600 text-white
+                    {% elif request_obj.status in 'pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    3
+                </div>
+                <div class="text-xs font-bold truncate">Admin Proc</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'pending_admin_procurement' %}text-blue-600 font-semibold
+                    {% elif request_obj.status == 'returned_for_correction' %}text-orange-600 font-semibold
+                    {% elif request_obj.status in 'pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}text-emerald-600 font-medium
+                    {% else %}Antrean{% endif %}">
+                    {% if request_obj.status == 'pending_admin_procurement' %}Menunggu
+                    {% elif request_obj.status == 'returned_for_correction' %}Dikembalikan
+                    {% elif request_obj.status in 'pending_supplier_evaluation pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}Selesai
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+
+            <!-- Step 4: Evaluasi Supplier -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'pending_supplier_evaluation' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status in 'pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'pending_supplier_evaluation' %}
+                        bg-blue-600 text-white animate-pulse
+                    {% elif request_obj.status in 'pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    4
+                </div>
+                <div class="text-xs font-bold truncate">Evaluasi Vendor</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'pending_supplier_evaluation' %}text-blue-600 font-semibold
+                    {% elif request_obj.status in 'pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}text-emerald-600 font-medium
+                    {% else %}Antrean{% endif %}">
+                    {% if request_obj.status == 'pending_supplier_evaluation' %}Menunggu
+                    {% elif request_obj.status in 'pending_managerial_approval approved partially_received discrepancy_open fulfilled' %}Selesai
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+
+            <!-- Step 5: Managerial Approval -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'pending_managerial_approval' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status in 'approved partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'pending_managerial_approval' %}
+                        bg-blue-600 text-white animate-pulse
+                    {% elif request_obj.status in 'approved partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    5
+                </div>
+                <div class="text-xs font-bold truncate">Managerial</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'pending_managerial_approval' %}text-blue-600 font-semibold
+                    {% elif request_obj.status in 'approved partially_received discrepancy_open fulfilled' %}text-emerald-600 font-medium
+                    {% else %}Antrean{% endif %}">
+                    {% if request_obj.status == 'pending_managerial_approval' %}Menunggu
+                    {% elif request_obj.status in 'approved partially_received discrepancy_open fulfilled' %}Selesai
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+
+            <!-- Step 6: PO & Penerimaan -->
+            <div class="p-3.5 rounded-xl border text-center transition
+                {% if request_obj.status == 'approved' %}
+                    bg-blue-50/80 border-blue-300 ring-2 ring-blue-100
+                {% elif request_obj.status in 'partially_received discrepancy_open fulfilled' %}
+                    bg-emerald-50/60 border-emerald-200 text-emerald-900
+                {% else %}
+                    bg-slate-50 border-slate-200 text-slate-400
+                {% endif %}">
+                <div class="w-7 h-7 mx-auto rounded-full flex items-center justify-center text-xs font-bold mb-1.5
+                    {% if request_obj.status == 'approved' %}
+                        bg-blue-600 text-white
+                    {% elif request_obj.status in 'partially_received discrepancy_open fulfilled' %}
+                        bg-emerald-600 text-white
+                    {% else %}
+                        bg-slate-200 text-slate-500
+                    {% endif %}">
+                    6
+                </div>
+                <div class="text-xs font-bold truncate">PO / Selesai</div>
+                <div class="text-[10px] mt-0.5
+                    {% if request_obj.status == 'approved' %}text-blue-600 font-semibold
+                    {% elif request_obj.status == 'fulfilled' %}text-emerald-600 font-semibold
+                    {% elif request_obj.status in 'partially_received discrepancy_open' %}text-amber-600 font-semibold
+                    {% else %}Antrean{% endif %}">
+                    {% if request_obj.status == 'approved' %}PO Terbit
+                    {% elif request_obj.status == 'fulfilled' %}Tuntas
+                    {% elif request_obj.status in 'partially_received discrepancy_open' %}Proses Terima
+                    {% else %}Antrean{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Approval Decision Panel (Jika user adalah approver pada status aktif ini) -->
+    {% if request_obj.status == "pending_section_head" or request_obj.status == "pending_finance" or request_obj.status == "pending_admin_procurement" or request_obj.status == "pending_managerial_approval" %}
+        {% if request_obj.status == "pending_section_head" and request.user.procurement_profile.role == "section_head" or request_obj.status == "pending_finance" and request.user.procurement_profile.role == "finance" or request_obj.status == "pending_admin_procurement" and request.user.procurement_profile.role == "admin_procurement" or request_obj.status == "pending_managerial_approval" and request.user.procurement_profile.role == "managerial_approver" or request.user.is_superuser %}
+        <div class="bg-gradient-to-br from-blue-50/80 via-white to-indigo-50/50 rounded-2xl border-2 border-blue-400/80 p-6 shadow-md">
+            <div class="flex items-start gap-3.5 mb-5">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-sm shadow-blue-500/30">
+                    <i data-lucide="check-square" class="w-5 h-5"></i>
+                </div>
+                <div>
+                    <h3 class="text-base font-bold text-slate-900">Tindakan Persetujuan Diperlukan</h3>
+                    <p class="text-xs text-slate-600 mt-0.5">
+                        Anda saat ini berwenang untuk meninjau dan menetapkan keputusan untuk tahapan 
+                        <strong class="text-blue-700">{{ request_obj.get_status_display }}</strong>.
+                    </p>
+                </div>
+            </div>
+
+            <form method="post" action="{% url 'procurement:request-decide' request_obj.pk %}" class="space-y-4">
+                {% csrf_token %}
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-2">Keputusan Anda</label>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:border-emerald-400 cursor-pointer transition">
+                            <input type="radio" name="decision" value="approved" checked class="text-emerald-600 focus:ring-emerald-500">
+                            <div>
+                                <span class="block text-xs font-bold text-emerald-700">Setujui (Approve)</span>
+                                <span class="block text-[11px] text-slate-400">Lanjut ke tahap berikutnya</span>
+                            </div>
+                        </label>
+
+                        <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:border-rose-400 cursor-pointer transition">
+                            <input type="radio" name="decision" value="rejected" class="text-rose-600 focus:ring-rose-500">
+                            <div>
+                                <span class="block text-xs font-bold text-rose-700">Tolak (Reject)</span>
+                                <span class="block text-[11px] text-slate-400">Batalkan pengadaan</span>
+                            </div>
+                        </label>
+
+                        {% if request_obj.status == "pending_admin_procurement" or request.user.is_superuser %}
+                        <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:border-orange-400 cursor-pointer transition">
+                            <input type="radio" name="decision" value="returned" class="text-orange-600 focus:ring-orange-500">
+                            <div>
+                                <span class="block text-xs font-bold text-orange-700">Kembalikan untuk Koreksi</span>
+                                <span class="block text-[11px] text-slate-400">Minta revisi ke pemohon</span>
+                            </div>
+                        </label>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 uppercase tracking-wider mb-1.5">Catatan / Komentar Keputusan</label>
+                    <textarea name="comment" rows="3"
+                              placeholder="Tuliskan catatan pertimbangan, rekomendasi, atau alasan keputusan di sini..."
+                              class="w-full rounded-xl border border-slate-200 p-3 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition"></textarea>
+                </div>
+
+                <div class="flex justify-end pt-2">
+                    <button type="submit"
+                            class="px-5 py-2.5 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/25 transition flex items-center gap-2">
+                        <i data-lucide="check" class="w-4 h-4"></i>
+                        <span>Kirim Keputusan Persetujuan</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- Grid Detail Informasi Dokumen -->
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- 2 Cols: Item Pengadaan Table -->
+        <div class="lg:col-span-2 space-y-6">
+            <!-- Items Table Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Daftar Item Pengadaan</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Spesifikasi barang dan jasa yang diajukan</p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                        {{ request_obj.items.count }} Item
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-slate-50/75 border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3.5 px-6">Deskripsi Item</th>
+                                <th class="py-3.5 px-4">Tipe</th>
+                                <th class="py-3.5 px-4">Qty</th>
+                                <th class="py-3.5 px-4">Supplier Rekomendasi</th>
+                                <th class="py-3.5 px-6 text-right">Harga Satuan</th>
+                                <th class="py-3.5 px-6 text-right">Subtotal</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for item in request_obj.items.all %}
+                            <tr class="hover:bg-slate-50/50 transition">
+                                <td class="py-4 px-6 font-semibold text-slate-900">
+                                    {{ item.description }}
+                                </td>
+                                <td class="py-4 px-4 whitespace-nowrap">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-medium
+                                        {% if item.item_type == 'goods' %}bg-blue-50 text-blue-700 border border-blue-200
+                                        {% else %}bg-purple-50 text-purple-700 border border-purple-200{% endif %}">
+                                        {{ item.get_item_type_display }}
+                                    </span>
+                                </td>
+                                <td class="py-4 px-4 font-medium text-slate-700 whitespace-nowrap">
+                                    {{ item.quantity|qty }} {{ item.unit }}
+                                </td>
+                                <td class="py-4 px-4 whitespace-nowrap">
+                                    {% if item.proposed_supplier_name %}
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                        <i data-lucide="building-2" class="w-3 h-3"></i>
+                                        {{ item.proposed_supplier_name }}
+                                    </span>
+                                    {% else %}
+                                    <span class="text-xs text-slate-300">—</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-4 px-6 text-right font-mono text-slate-600 whitespace-nowrap">
+                                    {{ item.estimated_unit_price|rupiah }}
+                                </td>
+                                <td class="py-4 px-6 text-right font-bold text-slate-900 whitespace-nowrap">
+                                    {{ item.line_total|rupiah }}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                        <tfoot class="bg-slate-50 border-t-2 border-slate-200">
+                            <tr>
+                                <th colspan="5" class="py-4 px-6 text-right text-xs uppercase tracking-wider text-slate-600 font-bold">
+                                    Total Estimasi Pengadaan
+                                </th>
+                                <th class="py-4 px-6 text-right text-base font-extrabold text-blue-700">
+                                    {{ request_obj.estimated_total|rupiah }}
+                                </th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Evaluasi Supplier Card (Jika ada) -->
+            {% if request_obj.supplier_evaluations.exists %}
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+                <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                        <h2 class="text-base font-bold text-slate-900">Komparasi Evaluasi Supplier</h2>
+                        <p class="text-xs text-slate-500 mt-0.5">Penilaian scoring mitra pengadaan berdasarkan 4 pilar standar</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm">
+                        <thead>
+                            <tr class="bg-slate-50/75 border-b border-slate-100 text-xs font-bold uppercase tracking-wider text-slate-500">
+                                <th class="py-3 px-6">Supplier</th>
+                                <th class="py-3 px-4 text-center">Harga</th>
+                                <th class="py-3 px-4 text-center">Kualitas</th>
+                                <th class="py-3 px-4 text-center">Lead Time</th>
+                                <th class="py-3 px-4 text-center">Compliance</th>
+                                <th class="py-3 px-6 text-right">Skor Total</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100">
+                            {% for ev in request_obj.supplier_evaluations.all %}
+                            <tr class="hover:bg-slate-50/50 transition">
+                                <td class="py-3.5 px-6 font-semibold text-slate-900">
+                                    <div>{{ ev.supplier.name }}</div>
+                                    {% if ev.notes %}<p class="text-xs text-slate-400 font-normal mt-0.5">{{ ev.notes }}</p>{% endif %}
+                                </td>
+                                <td class="py-3.5 px-4 text-center text-slate-600">{{ ev.price_score }}</td>
+                                <td class="py-3.5 px-4 text-center text-slate-600">{{ ev.quality_score }}</td>
+                                <td class="py-3.5 px-4 text-center text-slate-600">{{ ev.lead_time_score }}</td>
+                                <td class="py-3.5 px-4 text-center text-slate-600">{{ ev.compliance_score }}</td>
+                                <td class="py-3.5 px-6 text-right font-extrabold text-blue-600">
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                        {{ ev.total_score|floatformat:2 }}
+                                    </span>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Permintaan Pembatalan (Jika ada) -->
+            {% for cancellation in request_obj.cancellation_requests.all %}
+            <div class="bg-rose-50 border border-rose-200 rounded-2xl p-5 space-y-3">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2 text-rose-800 font-bold text-sm">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+                        <span>Permintaan Pembatalan Dokumen (Status: {{ cancellation.get_decision_display }})</span>
+                    </div>
+                    <span class="text-xs text-slate-500">{{ cancellation.created_at|date:"d M Y, H:i" }}</span>
+                </div>
+                <p class="text-xs text-rose-700 bg-white/70 p-3 rounded-xl border border-rose-100">{{ cancellation.reason }}</p>
+                {% if cancellation.decision == "pending" and request.user.procurement_profile.role == "procurement" or request.user.is_superuser and cancellation.decision == "pending" %}
+                <div class="flex items-center gap-2 pt-2">
+                    <form method="post" action="{% url 'procurement:cancellation-decide' cancellation.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="decision" value="approved">
+                        <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-white bg-rose-600 hover:bg-rose-700 transition">
+                            Setujui Pembatalan
+                        </button>
+                    </form>
+                    <form method="post" action="{% url 'procurement:cancellation-decide' cancellation.pk %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="decision" value="rejected">
+                        <button type="submit" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition">
+                            Tolak Pembatalan
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- 1 Col: Summary & Approval Timeline -->
+        <div class="space-y-6">
+            <!-- Summary Information Card -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 border-b border-slate-100 pb-3">Informasi Pengadaan</h3>
+                
+                <div class="space-y-3.5 text-xs">
+                    <div>
+                        <span class="text-slate-400 block font-medium">Pemohon (Requester)</span>
+                        <div class="flex items-center gap-2 mt-1">
+                            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-[10px]">
+                                {{ request_obj.requester.get_username|slice:":2"|upper }}
+                            </div>
+                            <span class="font-semibold text-slate-800">{{ request_obj.requester.get_username }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <span class="text-slate-400 block font-medium">Tenggat Waktu Kebutuhan</span>
+                        <span class="font-semibold text-slate-800 mt-0.5 block flex items-center gap-1.5">
+                            <i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i>
+                            {{ request_obj.needed_by|date:"l, d F Y" }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-slate-400 block font-medium">Supplier Usulan</span>
+                        <span class="font-semibold text-slate-800 mt-0.5 block">
+                            {{ request_obj.proposed_supplier.name|default:"-" }}
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-slate-400 block font-medium">Supplier Final Terpilih</span>
+                        <span class="font-semibold text-slate-800 mt-0.5 block flex items-center gap-1">
+                            {% if request_obj.final_supplier %}
+                                <i data-lucide="check-circle" class="w-3.5 h-3.5 text-emerald-600"></i>
+                                <span class="text-emerald-700 font-bold">{{ request_obj.final_supplier.name }}</span>
+                            {% else %}
+                                <span class="text-slate-400 italic">Belum ditetapkan</span>
+                            {% endif %}
+                        </span>
+                    </div>
+
+                    <div>
+                        <span class="text-slate-400 block font-medium">Tujuan / Justifikasi</span>
+                        <p class="text-slate-600 mt-1 leading-relaxed bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                            {{ request_obj.purpose }}
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approval Audit History Timeline -->
+            <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-6 space-y-4">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400">Histori Approval & Audit</h3>
+                    <span class="text-[11px] text-slate-400 font-medium">{{ request_obj.approval_actions.count }} Keputusan</span>
+                </div>
+
+                <div class="space-y-4">
+                    {% for action in request_obj.approval_actions.all %}
+                    <div class="relative pl-6 pb-4 border-l-2 border-slate-200 last:border-transparent last:pb-0">
+                        <div class="absolute -left-[9px] top-0 w-4 h-4 rounded-full
+                            {% if action.decision == 'approved' %}bg-emerald-500 ring-4 ring-emerald-100
+                            {% elif action.decision == 'rejected' %}bg-rose-500 ring-4 ring-rose-100
+                            {% else %}bg-orange-500 ring-4 ring-orange-100{% endif %}"></div>
+                        <div>
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-800">{{ action.get_stage_display }}</span>
+                                <span class="text-[10px] text-slate-400">{{ action.decided_at|date:"d M, H:i" }}</span>
+                            </div>
+                            <span class="inline-block mt-0.5 text-[11px] font-semibold
+                                {% if action.decision == 'approved' %}text-emerald-700
+                                {% elif action.decision == 'rejected' %}text-rose-700
+                                {% else %}text-orange-700{% endif %}">
+                                {{ action.get_decision_display }} &bull; oleh {{ action.approver.get_username }}
+                            </span>
+                            {% if action.comment %}
+                            <p class="mt-1.5 text-xs text-slate-600 bg-slate-50 p-2 rounded-lg border border-slate-100 italic">
+                                "{{ action.comment }}"
+                            </p>
+                            {% endif %}
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-xs text-slate-400 italic py-2 text-center">Belum ada keputusan atau catatan histori persetujuan.</p>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
