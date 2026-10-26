@@ -12,18 +12,33 @@ Sistem ini dirancang dan diimplementasikan secara ketat mengacu pada:
 
 ---
 
+## Preview Aplikasi
+
+### 1. Dashboard Utama & Monitoring KPI
+Monitoring *real-time* aktivitas pengadaan, visualisasi tren pengeluaran, komposisi status dokumen, dan antrean tugas terpersonalisasi berdasarkan peran pengguna:
+
+![Dashboard ProcureFlow](guide/screenshots/dashboard_preview.png)
+
+### 2. Manajemen & Pelacakan Status Pengadaan
+Pemantauan status permohonan secara transparan dengan indikator tahapan berjenjang (*Pending Approval*, *Returned for Correction*, *Discrepancy Open*, hingga *Fulfilled*):
+
+![Daftar Pengadaan ProcureFlow](guide/screenshots/request_list_preview.png)
+
+---
+
 ## Daftar Isi
-1. [Fitur Utama & Alur Bisnis](#fitur-utama--alur-bisnis)
-2. [Matriks Peran Pengguna (RBAC)](#matriks-peran-pengguna-rbac)
-3. [Prasyarat Sistem](#prasyarat-sistem)
-4. [Langkah Instalasi](#langkah-instalasi)
-5. [Data Pengguna (User Management)](#data-pengguna-user-management)
+1. [Preview Aplikasi](#preview-aplikasi)
+2. [Fitur Utama & Alur Bisnis](#fitur-utama--alur-bisnis)
+3. [Matriks Peran Pengguna (RBAC)](#matriks-peran-pengguna-rbac)
+4. [Prasyarat Sistem](#prasyarat-sistem)
+5. [Langkah Instalasi](#langkah-instalasi)
+6. [Data Pengguna (User Management)](#data-pengguna-user-management)
    - [Opsi A: Template Akun Siap Pakai (Seeder Data)](#opsi-a-template-akun-siap-pakai-seeder-data-rekomendasi)
    - [Opsi B: Membuat User & Role Baru Secara Manual](#opsi-b-membuat-user--role-baru-secara-manual)
-6. [Menjalankan Aplikasi](#menjalankan-aplikasi)
-7. [Panduan Skenario Demo & Pengujian](#panduan-skenario-demo--pengujian)
-8. [Menjalankan Automated Tests](#menjalankan-automated-tests)
-9. [Struktur Direktori Proyek](#struktur-direktori-proyek)
+7. [Menjalankan Aplikasi](#menjalankan-aplikasi)
+8. [Panduan Skenario Demo & Pengujian](#panduan-skenario-demo--pengujian)
+9. [Menjalankan Automated Tests](#menjalankan-automated-tests)
+10. [Struktur Direktori Proyek](#struktur-direktori-proyek)
 
 ---
 
@@ -375,6 +390,9 @@ procurement-app/
 │   └── views.py                # Views controller dan visual filtering
 │
 ├── guide/                      # Dokumen Acuan Spesifikasi & Analisis
+│   ├── screenshots/            # Tangkapan layar antarmuka aplikasi
+│   │   ├── dashboard_preview.png    # Preview Dashboard & Analitik
+│   │   └── request_list_preview.png # Preview Daftar Request & Status
 │   ├── BRD_Procurement_Management_System_Django.docx # Business Requirement Document
 │   ├── PRD_Procurement_Management_System_Django.docx # Product Requirement Document
 │   ├── Rancangan_UI_ProcureFlow.md                   # Spesifikasi desain antarmuka
