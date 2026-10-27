@@ -84,6 +84,20 @@
                     {% if form.title.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.title.errors|join:", " }}</p>{% endif %}
                 </div>
 
+                <!-- Departemen / Divisi -->
+                <div>
+                    <label for="{{ form.department.id_for_label }}" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">
+                        Departemen / Cost Center <span class="text-rose-500">*</span>
+                    </label>
+                    <select name="{{ form.department.html_name }}" id="{{ form.department.id_for_label }}" required
+                            class="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm text-slate-900 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition bg-slate-50 focus:bg-white">
+                        {% for val, label in form.department.field.choices %}
+                            <option value="{{ val }}" {% if form.department.value == val %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                    {% if form.department.errors %}<p class="mt-1 text-xs text-rose-600">{{ form.department.errors|join:", " }}</p>{% endif %}
+                </div>
+
                 <!-- Tanggal -->
                 <div>
                     <label for="{{ form.needed_by.id_for_label }}" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1.5">

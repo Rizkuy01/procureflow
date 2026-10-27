@@ -7,7 +7,7 @@ from .models import PurchaseRequest, PurchaseRequestItem, Supplier, SupplierEval
 class PurchaseRequestForm(forms.ModelForm):
     class Meta:
         model = PurchaseRequest
-        fields = ("title", "purpose", "needed_by")
+        fields = ("title", "department", "purpose", "needed_by")
         widgets = {"needed_by": forms.DateInput(attrs={"type": "date"})}
 
 

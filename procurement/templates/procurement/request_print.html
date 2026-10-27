@@ -1,0 +1,684 @@
+{% load static %}
+{% load procurement_tags %}
+<!doctype html>
+<html lang="id">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ request_obj.request_no }} - Lembar Purchase Requisition - ProcureFlow</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-size: 12.5px;
+            color: #0f172a;
+            background: #f1f5f9;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+        }
+        .page {
+            max-width: 840px;
+            margin: 28px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+            overflow: hidden;
+            position: relative;
+        }
+        /* Top Accent Bar */
+        .page-top-bar {
+            height: 6px;
+            background: linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%);
+        }
+
+        /* Document Header */
+        .doc-header {
+            padding: 28px 36px 20px 36px;
+            border-bottom: 2px solid #0f172a;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 20px;
+        }
+        .brand-kicker {
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            color: #2563eb;
+            margin-bottom: 2px;
+        }
+        .brand-title {
+            font-size: 20px;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #0f172a;
+            line-height: 1.2;
+        }
+        .brand-subtitle {
+            font-size: 11px;
+            color: #64748b;
+            margin-top: 3px;
+        }
+        .doc-meta {
+            text-align: right;
+        }
+        .meta-req-no {
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-size: 13px;
+            font-weight: 700;
+            background: #f8fafc;
+            color: #0f172a;
+            padding: 4px 10px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            display: inline-block;
+            margin-bottom: 6px;
+        }
+        .doc-meta p {
+            font-size: 11px;
+            color: #64748b;
+            line-height: 1.4;
+        }
+
+        /* Status Badge */
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            background: #f1f5f9;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #64748b; }
+        .status-approved, .status-fulfilled { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .status-approved .status-dot, .status-fulfilled .status-dot { background: #10b981; }
+        .status-pending { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+        .status-pending .status-dot { background: #3b82f6; }
+        .status-rejected, .status-cancelled { background: #fff1f2; color: #be123c; border-color: #fecdd3; }
+        .status-rejected .status-dot, .status-cancelled .status-dot { background: #f43f5e; }
+        .status-returned { background: #fff7ed; color: #c2410c; border-color: #fed7aa; }
+        .status-returned .status-dot { background: #f97316; }
+
+        /* Meta Grid Section */
+        .meta-grid {
+            padding: 20px 36px;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        .meta-field-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 3px;
+        }
+        .meta-field-value {
+            font-size: 12.5px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .meta-field-value.highlight {
+            color: #1d4ed8;
+        }
+        .meta-full-col {
+            grid-column: 1 / -1;
+            padding-top: 4px;
+        }
+        .purpose-box {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 11.5px;
+            color: #334155;
+            line-height: 1.5;
+            margin-top: 4px;
+        }
+
+        /* Items Table */
+        .items-section {
+            padding: 24px 36px;
+        }
+        .section-heading {
+            font-size: 12px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #0f172a;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .items-table th {
+            background: #0f172a;
+            color: #ffffff;
+            font-weight: 700;
+            font-size: 10.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            padding: 8px 10px;
+            text-align: left;
+        }
+        .items-table th.text-center { text-align: center; }
+        .items-table th.text-right { text-align: right; }
+        .items-table td {
+            padding: 10px;
+            border-bottom: 1px solid #e2e8f0;
+            color: #1e293b;
+            vertical-align: top;
+        }
+        .items-table tr:nth-child(even) td {
+            background: #fafafa;
+        }
+        .item-desc {
+            font-weight: 600;
+            color: #0f172a;
+        }
+        .item-badge {
+            display: inline-block;
+            font-size: 9.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-top: 2px;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #dbeafe;
+        }
+        .item-badge.service {
+            background: #f5f3ff;
+            color: #6d28d9;
+            border-color: #ede9fe;
+        }
+        .supplier-rec {
+            font-size: 10.5px;
+            color: #475569;
+            margin-top: 3px;
+        }
+        .items-table tfoot th {
+            background: #f8fafc;
+            color: #0f172a;
+            font-weight: 800;
+            font-size: 12.5px;
+            padding: 12px 10px;
+            border-top: 2px solid #0f172a;
+        }
+
+        /* Signatures / Approval Matrix */
+        .signatures-section {
+            padding: 0 36px 28px 36px;
+        }
+        .signatures-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+        .sig-card {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 140px;
+            background: #ffffff;
+            position: relative;
+        }
+        .sig-role {
+            font-size: 10px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #0f172a;
+            border-bottom: 1px solid #f1f5f9;
+            padding-bottom: 4px;
+            margin-bottom: 6px;
+            text-align: center;
+        }
+        .sig-stamp-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 4px 0;
+        }
+        .digital-stamp {
+            border: 2px dashed #10b981;
+            color: #047857;
+            background: #ecfdf5;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 800;
+            font-size: 9.5px;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            display: inline-block;
+            margin-bottom: 4px;
+        }
+        .digital-stamp.rejected {
+            border-color: #f43f5e;
+            color: #be123c;
+            background: #fff1f2;
+        }
+        .digital-stamp.returned {
+            border-color: #f97316;
+            color: #c2410c;
+            background: #fff7ed;
+        }
+        .digital-stamp.pending {
+            border-color: #94a3b8;
+            color: #64748b;
+            background: #f8fafc;
+            border-style: dotted;
+        }
+        .stamp-date {
+            font-size: 9px;
+            color: #64748b;
+            margin-top: 2px;
+        }
+        .sig-person {
+            border-top: 1px solid #e2e8f0;
+            padding-top: 6px;
+            text-align: center;
+        }
+        .sig-name {
+            font-size: 11px;
+            font-weight: 700;
+            color: #0f172a;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .sig-title {
+            font-size: 9.5px;
+            color: #64748b;
+        }
+
+        /* Document Footer */
+        .doc-footer {
+            padding: 14px 36px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 10.5px;
+            color: #64748b;
+        }
+
+        /* Print Actions Floating Bar */
+        .print-actions {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            z-index: 100;
+        }
+        .btn-back {
+            background: #ffffff;
+            color: #334155;
+            border: 1px solid #cbd5e1;
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            transition: all .15s ease;
+        }
+        .btn-back:hover { background: #f8fafc; color: #0f172a; }
+        .btn-print {
+            background: #2563eb;
+            color: #ffffff;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: 700;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(37,99,235,0.35);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all .15s ease;
+        }
+        .btn-print:hover { background: #1d4ed8; }
+
+        /* Media Print Rules */
+        @media print {
+            body { background: #ffffff !important; }
+            .page {
+                border: none !important;
+                box-shadow: none !important;
+                margin: 0 auto !important;
+                max-width: 100% !important;
+                border-radius: 0 !important;
+            }
+            .print-actions { display: none !important; }
+            .items-table th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .digital-stamp { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .page-top-bar { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .meta-grid { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="page">
+        <div class="page-top-bar"></div>
+
+        <!-- ── 1. Document Header ── -->
+        <div class="doc-header">
+            <div>
+                <p class="brand-kicker">ProcureFlow &bull; Enterprise System</p>
+                <h1 class="brand-title">Purchase Requisition (PR)</h1>
+                <p class="brand-subtitle">Formulir Permohonan Pengadaan Barang &amp; Jasa Internal</p>
+            </div>
+            <div class="doc-meta">
+                <span class="meta-req-no">{{ request_obj.request_no }}</span>
+                <div>
+                    {% with s=request_obj.status %}
+                    <span class="status-badge
+                        {% if s == 'approved' or s == 'fulfilled' %}status-approved
+                        {% elif s == 'rejected' or s == 'cancelled' %}status-rejected
+                        {% elif s == 'returned_for_correction' %}status-returned
+                        {% else %}status-pending{% endif %}">
+                        <span class="status-dot"></span>
+                        {{ request_obj.get_status_display }}
+                    </span>
+                    {% endwith %}
+                </div>
+                <p style="margin-top: 6px;">Dibuat: {{ request_obj.created_at|date:"d F Y, H:i" }} WIB</p>
+            </div>
+        </div>
+
+        <!-- ── 2. Meta Information Grid ── -->
+        <div class="meta-grid">
+            <div>
+                <p class="meta-field-label">Pemohon (Requester)</p>
+                <p class="meta-field-value">{{ request_obj.requester.get_full_name|default:request_obj.requester.get_username }}</p>
+            </div>
+
+            <div>
+                <p class="meta-field-label">Departemen / Cost Center</p>
+                <p class="meta-field-value highlight">{{ request_obj.get_department_display }}</p>
+            </div>
+
+            <div>
+                <p class="meta-field-label">Tanggal Kebutuhan (Needed By)</p>
+                <p class="meta-field-value">{{ request_obj.needed_by|date:"d F Y" }}</p>
+            </div>
+
+            <div style="grid-column: span 2;">
+                <p class="meta-field-label">Judul Pengadaan</p>
+                <p class="meta-field-value">{{ request_obj.title }}</p>
+            </div>
+
+            <div>
+                <p class="meta-field-label">Supplier Rekomendasi / Usulan</p>
+                <p class="meta-field-value">{{ request_obj.proposed_supplier.name|default:"—" }}</p>
+            </div>
+
+            <div class="meta-full-col">
+                <p class="meta-field-label">Tujuan / Justifikasi Kebutuhan Pengadaan</p>
+                <div class="purpose-box">
+                    {{ request_obj.purpose }}
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 3. Rincian Item Barang & Jasa ── -->
+        <div class="items-section">
+            <div class="section-heading">
+                <span>Rincian Spesifikasi Item Barang &amp; Jasa</span>
+                <span style="font-weight: 600; color: #64748b; font-size: 11px;">Total: {{ request_obj.items.count }} Baris Item</span>
+            </div>
+
+            <table class="items-table">
+                <thead>
+                    <tr>
+                        <th style="width: 32px;" class="text-center">No</th>
+                        <th>Deskripsi &amp; Spesifikasi Item</th>
+                        <th class="text-center" style="width: 90px;">Tipe</th>
+                        <th class="text-center" style="width: 80px;">Qty</th>
+                        <th style="width: 140px;">Rekomendasi Vendor</th>
+                        <th class="text-right" style="width: 120px;">Est. Harga (Rp)</th>
+                        <th class="text-right" style="width: 130px;">Total (Rp)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in request_obj.items.all %}
+                    <tr>
+                        <td class="text-center" style="color: #64748b; font-weight: 700;">{{ forloop.counter }}</td>
+                        <td>
+                            <p class="item-desc">{{ item.description }}</p>
+                        </td>
+                        <td class="text-center">
+                            <span class="item-badge {% if item.item_type == 'service' %}service{% endif %}">
+                                {{ item.get_item_type_display }}
+                            </span>
+                        </td>
+                        <td class="text-center" style="font-weight: 600;">
+                            {{ item.quantity|qty }} {{ item.unit }}
+                        </td>
+                        <td>
+                            {% if item.proposed_supplier_name %}
+                                <span class="supplier-rec">{{ item.proposed_supplier_name }}</span>
+                            {% else %}
+                                <span style="color: #94a3b8; font-size: 11px;">—</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-right" style="font-family: monospace;">
+                            {{ item.estimated_unit_price|rupiah }}
+                        </td>
+                        <td class="text-right" style="font-weight: 700; color: #0f172a; font-family: monospace;">
+                            {{ item.line_total|rupiah }}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center" style="padding: 20px; color: #64748b;">
+                            Tidak ada item dalam pengadaan ini.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot>
+                    <tr>
+                        <th colspan="6" style="text-align: right; text-transform: uppercase;">
+                            Grand Total Estimasi Nilai PR:
+                        </th>
+                        <th class="text-right" style="color: #1d4ed8; font-size: 13.5px; font-family: monospace;">
+                            {{ request_obj.estimated_total|rupiah }}
+                        </th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- ── 4. Matriks Disposisi Otorisasi & Persetujuan (Signatures Grid) ── -->
+        <div class="signatures-section">
+            <div class="section-heading">
+                <span>Matriks Disposisi &amp; Otorisasi Persetujuan</span>
+                <span style="font-size: 10px; color: #64748b; font-weight: 600;">Digital Audit Trail Verified</span>
+            </div>
+
+            <div class="signatures-grid">
+                <!-- 1. Pemohon (Requester) -->
+                <div class="sig-card">
+                    <p class="sig-role">1. Pemohon</p>
+                    <div class="sig-stamp-area">
+                        {% if request_obj.status != 'draft' %}
+                            <span class="digital-stamp">DIAJUKAN</span>
+                            <span class="stamp-date">{{ request_obj.created_at|date:"d/m/Y H:i" }}</span>
+                        {% else %}
+                            <span class="digital-stamp pending">DRAFT</span>
+                            <span class="stamp-date">Belum diajukan</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-person">
+                        <p class="sig-name">{{ request_obj.requester.get_full_name|default:request_obj.requester.get_username }}</p>
+                        <p class="sig-title">Requester</p>
+                    </div>
+                </div>
+
+                <!-- 2. Section Head -->
+                <div class="sig-card">
+                    <p class="sig-role">2. Section Head</p>
+                    <div class="sig-stamp-area">
+                        {% if approvals.section_head %}
+                            {% if approvals.section_head.decision == 'approved' %}
+                                <span class="digital-stamp">DISETUJUI</span>
+                            {% elif approvals.section_head.decision == 'rejected' %}
+                                <span class="digital-stamp rejected">DITOLAK</span>
+                            {% else %}
+                                <span class="digital-stamp returned">KOREKSI</span>
+                            {% endif %}
+                            <span class="stamp-date">{{ approvals.section_head.decided_at|date:"d/m/Y H:i" }}</span>
+                        {% elif request_obj.status == 'pending_section_head' %}
+                            <span class="digital-stamp pending">MENUNGGU</span>
+                            <span class="stamp-date">Antrean aktif</span>
+                        {% else %}
+                            <span class="digital-stamp pending">—</span>
+                            <span class="stamp-date">Belum sampai</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-person">
+                        <p class="sig-name">{{ approvals.section_head.approver.get_username|default:"Section Head" }}</p>
+                        <p class="sig-title">Atasan Langsung</p>
+                    </div>
+                </div>
+
+                <!-- 3. Finance (Pemeriksa Anggaran) -->
+                <div class="sig-card">
+                    <p class="sig-role">3. Finance</p>
+                    <div class="sig-stamp-area">
+                        {% if approvals.finance %}
+                            {% if approvals.finance.decision == 'approved' %}
+                                <span class="digital-stamp">DISETUJUI</span>
+                            {% elif approvals.finance.decision == 'rejected' %}
+                                <span class="digital-stamp rejected">DITOLAK</span>
+                            {% else %}
+                                <span class="digital-stamp returned">KOREKSI</span>
+                            {% endif %}
+                            <span class="stamp-date">{{ approvals.finance.decided_at|date:"d/m/Y H:i" }}</span>
+                        {% elif request_obj.status == 'pending_finance' %}
+                            <span class="digital-stamp pending">MENUNGGU</span>
+                            <span class="stamp-date">Antrean aktif</span>
+                        {% else %}
+                            <span class="digital-stamp pending">—</span>
+                            <span class="stamp-date">Belum sampai</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-person">
+                        <p class="sig-name">{{ approvals.finance.approver.get_username|default:"Finance Dept" }}</p>
+                        <p class="sig-title">Review Anggaran</p>
+                    </div>
+                </div>
+
+                <!-- 4. Admin Procurement -->
+                <div class="sig-card">
+                    <p class="sig-role">4. Admin Proc</p>
+                    <div class="sig-stamp-area">
+                        {% if approvals.admin_procurement %}
+                            {% if approvals.admin_procurement.decision == 'approved' %}
+                                <span class="digital-stamp">TERVERIFIKASI</span>
+                            {% else %}
+                                <span class="digital-stamp returned">KOREKSI</span>
+                            {% endif %}
+                            <span class="stamp-date">{{ approvals.admin_procurement.decided_at|date:"d/m/Y H:i" }}</span>
+                        {% elif request_obj.status == 'pending_admin_procurement' %}
+                            <span class="digital-stamp pending">MENUNGGU</span>
+                            <span class="stamp-date">Antrean aktif</span>
+                        {% else %}
+                            <span class="digital-stamp pending">—</span>
+                            <span class="stamp-date">Belum sampai</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-person">
+                        <p class="sig-name">{{ approvals.admin_procurement.approver.get_username|default:"Admin Proc" }}</p>
+                        <p class="sig-title">Verifikasi Berkas</p>
+                    </div>
+                </div>
+
+                <!-- 5. Managerial Approver -->
+                <div class="sig-card">
+                    <p class="sig-role">5. Manajerial</p>
+                    <div class="sig-stamp-area">
+                        {% if approvals.managerial %}
+                            {% if approvals.managerial.decision == 'approved' %}
+                                <span class="digital-stamp">DISETUJUI</span>
+                            {% elif approvals.managerial.decision == 'rejected' %}
+                                <span class="digital-stamp rejected">DITOLAK</span>
+                            {% else %}
+                                <span class="digital-stamp returned">KOREKSI</span>
+                            {% endif %}
+                            <span class="stamp-date">{{ approvals.managerial.decided_at|date:"d/m/Y H:i" }}</span>
+                        {% elif request_obj.status == 'pending_managerial_approval' %}
+                            <span class="digital-stamp pending">MENUNGGU</span>
+                            <span class="stamp-date">Antrean aktif</span>
+                        {% else %}
+                            <span class="digital-stamp pending">—</span>
+                            <span class="stamp-date">Belum sampai</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-person">
+                        <p class="sig-name">{{ approvals.managerial.approver.get_username|default:"Approver Final" }}</p>
+                        <p class="sig-title">Otorisasi Direksi</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── 5. Document Footer ── -->
+        <div class="doc-footer">
+            <span>Dokumen Resmi Sistem Manajemen Pengadaan ProcureFlow &bull; Bersifat Rahasia Internal</span>
+            <span>Dicetak pada: {% now "d/m/Y H:i" %} WIB</span>
+        </div>
+    </div>
+
+    <!-- Floating Print Action Buttons (Hidden when printed) -->
+    <div class="print-actions">
+        <a href="{% url 'procurement:request-detail' request_obj.pk %}" class="btn-back">
+            &larr; Kembali ke Detail PR
+        </a>
+        <button class="btn-print" onclick="window.print()" type="button">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="6 9 6 2 18 2 18 9"></polyline>
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+                <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            <span>Cetak / Simpan ke PDF</span>
+        </button>
+    </div>
+
+</body>
+</html>

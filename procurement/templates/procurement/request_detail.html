@@ -49,6 +49,12 @@
                 </a>
             {% endif %}
 
+            <a href="{% url 'procurement:request-print' request_obj.pk %}" target="_blank"
+               class="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 transition shadow-sm">
+                <i data-lucide="printer" class="w-4 h-4 text-slate-500"></i>
+                <span>Cetak Lembar PR</span>
+            </a>
+
             {% if request_obj.status == "draft" or request_obj.status == "returned_for_correction" %}
                 {% if request.user.id == request_obj.requester_id %}
                 <form method="post" action="{% url 'procurement:request-submit' request_obj.pk %}" class="inline">
@@ -539,6 +545,14 @@
                             </div>
                             <span class="font-semibold text-slate-800">{{ request_obj.requester.get_username }}</span>
                         </div>
+                    </div>
+
+                    <div>
+                        <span class="text-slate-400 block font-medium">Departemen / Cost Center</span>
+                        <span class="font-semibold text-slate-800 mt-0.5 flex items-center gap-1.5">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>{{ request_obj.get_department_display }}</span>
+                        </span>
                     </div>
 
                     <div>

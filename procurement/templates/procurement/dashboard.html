@@ -368,7 +368,11 @@
                         </td>
                         <td class="py-3.5 px-6 font-medium text-slate-900">
                             <div class="text-sm font-semibold">{{ item.title }}</div>
-                            <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                            <div class="text-xs text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                    <i data-lucide="building-2" class="w-2.5 h-2.5"></i>
+                                    <span>{{ item.get_department_display }}</span>
+                                </span>
                                 <span><i data-lucide="calendar" class="w-3 h-3 inline mr-0.5 text-slate-400"></i>Dibutuhkan: {{ item.needed_by|date:"d M Y" }}</span>
                                 {% if item.items.count %}
                                 <span>&bull; {{ item.items.count }} item</span>
@@ -464,7 +468,13 @@
                         </td>
                         <td class="py-3.5 px-6 font-medium text-slate-900">
                             <div class="text-sm font-semibold">{{ req.title }}</div>
-                            <div class="text-xs text-slate-400 mt-0.5">Dibuat: {{ req.created_at|date:"d M Y, H:i" }}</div>
+                            <div class="text-xs text-slate-400 mt-0.5 flex items-center gap-2">
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600">
+                                    <i data-lucide="building-2" class="w-2.5 h-2.5"></i>
+                                    <span>{{ req.get_department_display }}</span>
+                                </span>
+                                <span>&bull; Dibuat: {{ req.created_at|date:"d M Y, H:i" }}</span>
+                            </div>
                         </td>
                         <td class="py-3.5 px-6 text-slate-600 whitespace-nowrap">
                             <div class="flex items-center gap-2">

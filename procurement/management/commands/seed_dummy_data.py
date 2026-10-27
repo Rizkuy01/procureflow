@@ -62,6 +62,7 @@ class Command(BaseCommand):
                     "last_name": "Santoso",
                     "email": "budi.santoso@procureflow.local",
                     "role": UserProfile.Role.REQUESTER,
+                    "department": "it",
                     "band": "",
                 },
                 {
@@ -70,6 +71,7 @@ class Command(BaseCommand):
                     "last_name": "Nurhaliza",
                     "email": "siti.nurhaliza@procureflow.local",
                     "role": UserProfile.Role.REQUESTER,
+                    "department": "operations",
                     "band": "",
                 },
                 {
@@ -78,6 +80,7 @@ class Command(BaseCommand):
                     "last_name": "Wijaya",
                     "email": "hendra.wijaya@procureflow.local",
                     "role": UserProfile.Role.SECTION_HEAD,
+                    "department": "it",
                     "band": "",
                 },
                 {
@@ -86,6 +89,7 @@ class Command(BaseCommand):
                     "last_name": "Dewi",
                     "email": "ratna.dewi@procureflow.local",
                     "role": UserProfile.Role.FINANCE,
+                    "department": "finance",
                     "band": "",
                 },
                 {
@@ -94,6 +98,7 @@ class Command(BaseCommand):
                     "last_name": "Pratama",
                     "email": "dimas.pratama@procureflow.local",
                     "role": UserProfile.Role.ADMIN_PROCUREMENT,
+                    "department": "operations",
                     "band": "",
                 },
                 {
@@ -102,6 +107,7 @@ class Command(BaseCommand):
                     "last_name": "Kusuma",
                     "email": "maya.kusuma@procureflow.local",
                     "role": UserProfile.Role.PROCUREMENT,
+                    "department": "operations",
                     "band": "",
                 },
                 {
@@ -110,6 +116,7 @@ class Command(BaseCommand):
                     "last_name": "Soediro",
                     "email": "bambang.soediro@procureflow.local",
                     "role": UserProfile.Role.MANAGERIAL_APPROVER,
+                    "department": "it",
                     "band": "X",
                 },
                 {
@@ -118,6 +125,7 @@ class Command(BaseCommand):
                     "last_name": "Adhi",
                     "email": "tirto.adhi@procureflow.local",
                     "role": UserProfile.Role.MANAGERIAL_APPROVER,
+                    "department": "operations",
                     "band": "Y",
                 },
                 {
@@ -126,6 +134,7 @@ class Command(BaseCommand):
                     "last_name": "Mansyur",
                     "email": "zulkifli.mansyur@procureflow.local",
                     "role": UserProfile.Role.MANAGERIAL_APPROVER,
+                    "department": "operations",
                     "band": "Z",
                 },
                 {
@@ -134,6 +143,7 @@ class Command(BaseCommand):
                     "last_name": "Susilo",
                     "email": "joko.susilo@procureflow.local",
                     "role": UserProfile.Role.RECEIVER,
+                    "department": "operations",
                     "band": "",
                 },
                 {
@@ -142,6 +152,7 @@ class Command(BaseCommand):
                     "last_name": "Sistem",
                     "email": "admin@procureflow.local",
                     "role": UserProfile.Role.ADMIN_SYSTEM,
+                    "department": "it",
                     "band": "",
                     "is_staff": True,
                     "is_superuser": True,
@@ -170,11 +181,13 @@ class Command(BaseCommand):
                     user=user,
                     defaults={
                         "role": u_data["role"],
+                        "department": u_data.get("department", ""),
                         "managerial_band": u_data["band"],
                         "is_active": True,
                     },
                 )
                 profile.role = u_data["role"]
+                profile.department = u_data.get("department", "")
                 profile.managerial_band = u_data["band"]
                 profile.is_active = True
                 profile.save()

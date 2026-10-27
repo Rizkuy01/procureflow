@@ -1,0 +1,54 @@
+'use strict';
+
+const fs = require('fs');
+
+process.stdin.resume();
+
+let inputString = '';
+let currentLine = 0;
+
+process.stdin.on('data', inputStdin => {
+    inputString += inputStdin;
+});
+
+process.stdin.on('end', _ => {
+    inputString = inputString.trim().split('\n').map(str => str.trim());
+
+    main();
+});
+
+function readLine() {
+    return inputString[currentLine++];
+}
+
+function main() {
+    const input1 = readLine();
+    const input2 = readLine();
+    const input3 = readLine();
+
+    const isNum = s => /^\d+$/.test(s);
+    if (!isNum(input1) || !isNum(input2) || !isNum(input3)) {
+        console.log("Wrong Input");
+        return;
+    }
+
+    const fund = Number(input1);
+    const profit = Number(input2);
+    const years = Number(input3);
+
+    if (fund < 1000 || fund > 1000000000 || profit < 1 || profit > 20 || years < 1 || years > 40) {
+        console.log("Wrong Input");
+        return;
+    }
+
+    let numerator = BigInt(fund);
+    let denominator = 1n;
+    for (let i = 0; i < years; i++) {
+        numerator *= BigInt(100 + profit);
+        denominator *= 100n;
+    }
+
+    const total = numerator / denominator;
+
+    console.log("Rp " + total.toString());
+}

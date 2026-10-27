@@ -6,6 +6,17 @@ from decimal import Decimal
 import uuid
 
 
+class Department(models.TextChoices):
+    IT = "it", "Teknologi Informasi (IT)"
+    OPERATIONS = "operations", "Operasional & Logistik"
+    HR_GA = "hr_ga", "Human Resources & General Affairs"
+    FINANCE = "finance", "Keuangan & Akuntansi"
+    MARKETING = "marketing", "Pemasaran & Komersial"
+    PRODUCTION = "production", "Produksi & Teknik"
+    LEGAL = "legal", "Legal & Kepatuhan"
+    OTHER = "other", "Umum / Lintas Departemen"
+
+
 class UserProfile(models.Model):
     class Role(models.TextChoices):
         REQUESTER = "requester", "Requester"
@@ -23,6 +34,12 @@ class UserProfile(models.Model):
         related_name="procurement_profile",
     )
     role = models.CharField(max_length=32, choices=Role.choices)
+    department = models.CharField(
+        max_length=32,
+        choices=Department.choices,
+        blank=True,
+        verbose_name="Departemen",
+    )
     managerial_band = models.CharField(
         max_length=1,
         choices=(("X", "Pak X"), ("Y", "Pak Y"), ("Z", "Pak Z")),
@@ -136,6 +153,8 @@ class PurchaseRequest(models.Model):
         FULFILLED = "fulfilled", "Fulfilled / Closed"
         CANCELLED = "cancelled", "Cancelled"
 
+    Department = Department
+
     request_no = models.CharField(
         max_length=24, unique=True, default=generate_request_number, editable=False
     )
@@ -145,6 +164,12 @@ class PurchaseRequest(models.Model):
         related_name="purchase_requests",
     )
     title = models.CharField(max_length=200)
+    department = models.CharField(
+        max_length=32,
+        choices=Department.choices,
+        default=Department.OPERATIONS,
+        verbose_name="Departemen / Divisi",
+    )
     purpose = models.TextField()
     needed_by = models.DateField()
     status = models.CharField(

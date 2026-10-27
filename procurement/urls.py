@@ -9,6 +9,7 @@ urlpatterns = [
     path("requests/", views.request_list, name="request-list"),
     path("requests/new/", views.request_create, name="request-create"),
     path("requests/<int:pk>/", views.request_detail, name="request-detail"),
+    path("requests/<int:pk>/print/", views.request_print, name="request-print"),
     path("requests/<int:pk>/edit/", views.request_edit, name="request-edit"),
     path("requests/<int:pk>/submit/", views.request_submit, name="request-submit"),
     path("requests/<int:pk>/decide/", views.request_decide, name="request-decide"),

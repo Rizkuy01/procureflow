@@ -403,6 +403,11 @@ def request_list(request):
     )
     requests = base_queryset.order_by("-created_at")
 
+    # Department filter
+    dept_filter = request.GET.get("dept", "").strip()
+    if dept_filter:
+        requests = requests.filter(department=dept_filter)
+
     # Search filter
     search_query = request.GET.get("q", "").strip()
     if search_query:
@@ -410,6 +415,7 @@ def request_list(request):
             Q(request_no__icontains=search_query)
             | Q(title__icontains=search_query)
             | Q(requester__username__icontains=search_query)
+            | Q(department__icontains=search_query)
         )
 
     # Status filter tab
@@ -472,6 +478,8 @@ def request_list(request):
             "is_paginated": page_obj.has_other_pages(),
             "search_query": search_query,
             "status_filter": status_filter,
+            "dept_filter": dept_filter,
+            "departments": PurchaseRequest.Department.choices,
             "all_count": all_count,
             "draft_count": draft_count,
             "pending_count": pending_count,
@@ -483,6 +491,11 @@ def request_list(request):
 
 @login_required
 def request_create(request):
+    profile = getattr(request.user, "procurement_profile", None)
+    initial_data = {}
+    if profile and profile.department:
+        initial_data["department"] = profile.department
+
     if request.method == "POST":
         form = PurchaseRequestForm(request.POST)
         if form.is_valid():
@@ -496,7 +509,7 @@ def request_create(request):
                 messages.success(request, "Draft request berhasil disimpan.")
                 return redirect("procurement:request-detail", pk=request_obj.pk)
     else:
-        form = PurchaseRequestForm()
+        form = PurchaseRequestForm(initial=initial_data)
         formset = PurchaseRequestItemFormSet()
     return render(request, "procurement/request_form.html", {"form": form, "formset": formset})
 
@@ -561,6 +574,34 @@ def request_detail(request, pk):
                 and request_obj.status in EDITABLE_BEFORE_PO_STATUSES
                 and not hasattr(request_obj, "purchase_order")
             ),
+        },
+    )
+
+
+@login_required
+def request_print(request, pk):
+    request_obj = get_object_or_404(
+        PurchaseRequest.objects.select_related("requester", "proposed_supplier", "final_supplier")
+        .prefetch_related("items", "approval_actions__approver"),
+        pk=pk,
+    )
+    if not request.user.is_superuser and request_obj.requester_id != request.user.id:
+        profile = getattr(request.user, "procurement_profile", None)
+        if profile is None or not profile.is_active:
+            messages.error(request, "Anda tidak memiliki akses ke request ini.")
+            return redirect("procurement:request-list")
+
+    # Map approvals by stage for clean signature stamp rendering
+    approvals = {}
+    for action in request_obj.approval_actions.all():
+        approvals[action.stage] = action
+
+    return render(
+        request,
+        "procurement/request_print.html",
+        {
+            "request_obj": request_obj,
+            "approvals": approvals,
         },
     )
 

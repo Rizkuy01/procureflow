@@ -119,6 +119,38 @@ class AccessTests(TestCase):
         self.assertFalse(response2.context["page_obj"].has_next())
         self.assertTrue(response2.context["page_obj"].has_previous())
 
+    def test_request_list_filter_by_department(self):
+        supplier = Supplier.objects.create(name="Dept Supplier")
+        PurchaseRequest.objects.create(
+            requester=self.user,
+            title="IT Request",
+            department="it",
+            purpose="IT assets",
+            needed_by="2026-12-01",
+            proposed_supplier=supplier,
+        )
+        PurchaseRequest.objects.create(
+            requester=self.user,
+            title="Finance Request",
+            department="finance",
+            purpose="Finance assets",
+            needed_by="2026-12-01",
+            proposed_supplier=supplier,
+        )
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("procurement:request-list") + "?dept=it")
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "IT Request")
+        self.assertNotContains(response, "Finance Request")
+
+    def test_request_create_prepopulates_user_department(self):
+        self.user.procurement_profile.department = "it"
+        self.user.procurement_profile.save()
+        self.client.force_login(self.user)
+        response = self.client.get(reverse("procurement:request-create"))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["form"].initial.get("department"), "it")
+
 
 
 class ProcurementModelTests(TestCase):
@@ -278,6 +310,20 @@ class FulfillmentTests(TestCase):
         outsider = get_user_model().objects.create_user(username="po-outsider")
         self.client.force_login(outsider)
         response = self.client.get(reverse("procurement:po-print", args=[self.po.pk]))
+        self.assertRedirects(response, reverse("procurement:request-list"))
+
+    def test_request_print_page_is_available_to_requester(self):
+        self.client.force_login(self.requester)
+        response = self.client.get(reverse("procurement:request-print", args=[self.request.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, self.request.request_no)
+        self.assertContains(response, "Purchase Requisition")
+        self.assertContains(response, "Cetak / Simpan ke PDF")
+
+    def test_request_print_page_requires_access(self):
+        outsider = get_user_model().objects.create_user(username="req-outsider")
+        self.client.force_login(outsider)
+        response = self.client.get(reverse("procurement:request-print", args=[self.request.pk]))
         self.assertRedirects(response, reverse("procurement:request-list"))
 
     def test_over_receipt_is_rejected(self):

@@ -19,8 +19,8 @@ from .models import (
 
 @admin.register(UserProfile)
 class UserProfileAdmin(admin.ModelAdmin):
-    list_display = ("user", "role", "managerial_band", "is_active")
-    list_filter = ("role", "is_active")
+    list_display = ("user", "role", "department", "managerial_band", "is_active")
+    list_filter = ("role", "department", "is_active")
     search_fields = ("user__username", "user__email")
 
 
@@ -49,9 +49,9 @@ class PurchaseRequestItemInline(admin.TabularInline):
 
 @admin.register(PurchaseRequest)
 class PurchaseRequestAdmin(admin.ModelAdmin):
-    list_display = ("request_no", "title", "requester", "status", "estimated_total")
-    list_filter = ("status",)
-    search_fields = ("request_no", "title", "requester__username")
+    list_display = ("request_no", "title", "department", "requester", "status", "estimated_total")
+    list_filter = ("status", "department")
+    search_fields = ("request_no", "title", "department", "requester__username")
     readonly_fields = ("request_no", "estimated_total", "created_at", "updated_at")
     inlines = [PurchaseRequestItemInline]
 
